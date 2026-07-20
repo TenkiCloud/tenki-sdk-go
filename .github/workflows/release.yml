@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Resolve the version and show the tag without pushing
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: go-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: tenki-standard-small-2c-4g
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Tag release
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+
+          # The Go module has no manifest of its own. The coordinated SDK
+          # version is synced into sandbox/VERSION from tenki.app. The module
+          # lives under sandbox/, so the tag carries the subdir prefix per Go's
+          # submodule tagging convention. The tag is cut here, at release time,
+          # from the exact commit consumers `go get` — not on every sync.
+          version=$(tr -d '[:space:]' < sandbox/VERSION)
+          [ -n "${version}" ] || { echo 'FATAL: sandbox/VERSION is empty'; exit 1; }
+          tag="sandbox/v${version}"
+
+          # Immutable: never move an existing tag.
+          if git ls-remote --tags origin "refs/tags/${tag}" | awk '{print $2}' | grep -qxF "refs/tags/${tag}"; then
+            echo "tag ${tag} already exists, skipping"
+            exit 0
+          fi
+
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "[dry-run] would create and push ${tag} at $(git rev-parse HEAD)"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${tag}" -m "${tag}"
+          # Tolerate a concurrent run that pushed the same tag first: if the push
+          # fails but the tag now exists on the remote, treat as success.
+          git push origin "refs/tags/${tag}" 2>/dev/null || git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1

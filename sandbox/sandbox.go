@@ -1,0 +1,566 @@
+package sandbox
+
+import (
+	"context"
+	"crypto/tls"
+	"errors"
+	"fmt"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"strings"
+	"time"
+
+	"connectrpc.com/connect"
+	sandboxv1 "github.com/TenkiCloud/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
+	"github.com/TenkiCloud/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
+	"golang.org/x/net/http2"
+	"google.golang.org/protobuf/types/known/durationpb"
+)
+
+const (
+	headerAuthorization    = "Authorization"
+	headerSessionToken     = "X-Session-Token"
+	headerClientFamily     = "X-Tenki-Client-Family"
+	headerClientGeneration = "X-Tenki-Client-Generation"
+	defaultCookieName      = "tenki_session"
+	defaultCreateOwnerType = "SERVICE"
+	defaultCreateOwnerID   = "self"
+)
+
+// Client is an idiomatic wrapper over SandboxService Connect client.
+type Client struct {
+	authToken      string
+	baseURL        string
+	gatewayAddress string
+	// gatewayAddressExplicit is true when the operator pinned the
+	// gatewayAddress via WithGatewayAddress / TENKI_SANDBOX_GATEWAY_URL /
+	// config. When false (i.e. we fell back to deriveGatewayAddress), the
+	// SSH method will first try to discover the SSH WS bridge URL by
+	// calling engine.ListActiveSSHGateways, which lets staging/prod
+	// announce the new Edge-fronted bridge without operator-side config
+	// edits. Cached gateway address survives across SSH calls.
+	gatewayAddressExplicit bool
+	cookieName             string
+	httpClient             *http.Client
+	connectOpts            []connect.ClientOption
+	dataPlaneReadyTimeout  time.Duration
+	sandbox                sandboxv1connect.SandboxServiceClient
+	sshGateway             sandboxv1connect.SSHGatewayClientServiceClient
+}
+
+// ErrMissingAuthToken is returned when no auth token is provided via WithAuthToken or env vars.
+var ErrMissingAuthToken = errors.New("sandbox: missing auth token - set TENKI_AUTH_TOKEN or TENKI_API_KEY or use WithAuthToken")
+
+// New creates a new sandbox SDK client.
+//
+// Auth token resolution: WithAuthToken option > TENKI_AUTH_TOKEN env var > TENKI_API_KEY env var > error.
+// Base URL resolution: WithBaseURL option > TENKI_API_ENDPOINT env var > TENKI_API_URL env var > https://api.tenki.cloud.
+// Gateway URL resolution: WithGatewayAddress option > TENKI_SANDBOX_GATEWAY_URL env var > derived from base URL.
+func New(opts ...Option) (*Client, error) {
+	cfg := defaultClientConfig()
+
+	// Apply env var fallbacks before options.
+	if envURL := os.Getenv(EnvAPIEndpoint); envURL != "" {
+		cfg.baseURL = envURL
+	} else if envURL := os.Getenv(EnvAPIURL); envURL != "" {
+		cfg.baseURL = envURL
+	}
+	if envGatewayURL := os.Getenv(EnvGatewayURL); envGatewayURL != "" {
+		cfg.gatewayAddress = envGatewayURL
+	}
+	if envKey := os.Getenv(EnvAuthToken); envKey != "" {
+		cfg.authToken = envKey
+	} else if envKey := os.Getenv(EnvAPIKey); envKey != "" {
+		cfg.authToken = envKey
+	}
+
+	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
+		opt.apply(&cfg)
+	}
+
+	if strings.TrimSpace(cfg.authToken) == "" {
+		return nil, ErrMissingAuthToken
+	}
+	gatewayAddressExplicit := strings.TrimSpace(cfg.gatewayAddress) != ""
+	if !gatewayAddressExplicit {
+		cfg.gatewayAddress = deriveGatewayAddress(cfg.baseURL)
+	}
+
+	if cfg.httpClient == nil {
+		transport := &http2.Transport{
+			ReadIdleTimeout: 30 * time.Second,
+			PingTimeout:     5 * time.Second,
+		}
+		if strings.HasPrefix(cfg.baseURL, "http://") {
+			transport.AllowHTTP = true
+			transport.DialTLS = func(network, addr string, _ *tls.Config) (net.Conn, error) {
+				return net.Dial(network, addr)
+			}
+		}
+		cfg.httpClient = &http.Client{Timeout: cfg.httpTimeout, Transport: transport}
+	}
+
+	cookieName := cfg.cookieName
+	if cookieName == "" {
+		cookieName = defaultCookieName
+	}
+	interceptor := &authInterceptor{
+		authToken:  cfg.authToken,
+		cookieName: cookieName,
+	}
+
+	connectOpts := append(
+		[]connect.ClientOption{connect.WithInterceptors(interceptor), connect.WithGRPC()},
+		cfg.connectOpts...,
+	)
+
+	sandboxClient := sandboxv1connect.NewSandboxServiceClient(cfg.httpClient, cfg.baseURL, connectOpts...)
+	sshGatewayClient := sandboxv1connect.NewSSHGatewayClientServiceClient(cfg.httpClient, cfg.baseURL, connectOpts...)
+
+	return &Client{
+		authToken:              cfg.authToken,
+		baseURL:                cfg.baseURL,
+		gatewayAddress:         cfg.gatewayAddress,
+		gatewayAddressExplicit: gatewayAddressExplicit,
+		cookieName:             cookieName,
+		httpClient:             cfg.httpClient,
+		connectOpts:            append([]connect.ClientOption(nil), cfg.connectOpts...),
+		dataPlaneReadyTimeout:  cfg.dataPlaneReadyTimeout,
+		sandbox:                sandboxClient,
+		sshGateway:             sshGatewayClient,
+	}, nil
+}
+
+// Close closes idle HTTP connections held by the underlying transport.
+func (c *Client) Close() error {
+	if c == nil || c.httpClient == nil || c.httpClient.Transport == nil {
+		return nil
+	}
+
+	if transport, ok := c.httpClient.Transport.(interface{ CloseIdleConnections() }); ok {
+		transport.CloseIdleConnections()
+	}
+
+	return nil
+}
+
+// Create creates a sandbox session and returns an SDK Session wrapper.
+func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, error) {
+	cfg := defaultCreateConfig(c)
+	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
+		opt.applyCreate(&cfg)
+	}
+	if err := validateCreateResources(cfg.cpuCores, cfg.memoryMB, cfg.diskSizeGB); err != nil {
+		return nil, err
+	}
+
+	req := &sandboxv1.CreateSessionRequest{
+		OwnerType:         defaultCreateOwnerType,
+		OwnerId:           defaultCreateOwnerID,
+		Name:              cfg.name,
+		AllowInbound:      cfg.allowInbound,
+		AllowOutbound:     cfg.allowOutbound,
+		Metadata:          cloneStringMap(cfg.metadata),
+		Tags:              append([]string(nil), cfg.tags...),
+		Env:               cloneStringMap(cfg.env),
+		SshAuthorizedKeys: append([]string(nil), cfg.sshKeys...),
+		EnableOpencode:    cfg.enableOpenCode,
+		CloneRepoUrl:      cfg.cloneRepoURL,
+	}
+	if len(cfg.volumes) > 0 {
+		req.Volumes = make([]*sandboxv1.VolumeMount, 0, len(cfg.volumes))
+		for _, volume := range cfg.volumes {
+			if volume == nil {
+				continue
+			}
+			req.Volumes = append(req.Volumes, &sandboxv1.VolumeMount{
+				VolumeId:  volume.VolumeID,
+				MountPath: volume.MountPath,
+				Readonly:  volume.ReadOnly,
+			})
+		}
+	}
+
+	if cfg.maxDuration != nil {
+		req.MaxDuration = durationpb.New(*cfg.maxDuration)
+	}
+	if cfg.idleTimeout != nil {
+		minutes := int32(cfg.idleTimeout.Round(time.Minute) / time.Minute)
+		if *cfg.idleTimeout <= 0 {
+			minutes = 0
+		}
+		req.IdleTimeoutMinutes = &minutes
+	}
+	if cfg.pauseRetention != nil && *cfg.pauseRetention > 0 {
+		req.PauseRetention = durationpb.New(*cfg.pauseRetention)
+	}
+	if cfg.waitReady {
+		req.WaitReady = true
+	}
+	req.WaitForRuntime = cfg.waitForRuntime
+	if cfg.sticky {
+		req.Sticky = true
+	}
+	hasSource := cfg.image != "" || cfg.snapshotID != ""
+	if cfg.cpuCores != nil && (!hasSource || cfg.cpuCoresSet) {
+		req.CpuCores = cfg.cpuCores
+	}
+	if cfg.memoryMB != nil && (!hasSource || cfg.memoryMBSet) {
+		req.MemoryMb = cfg.memoryMB
+	}
+	if cfg.diskSizeGB != nil && (!hasSource || cfg.diskSizeGBSet) {
+		req.DiskSizeGb = cfg.diskSizeGB
+	}
+	if cfg.image != "" {
+		req.RegistryRef = &cfg.image
+	} else if cfg.snapshotID != "" {
+		req.SnapshotId = &cfg.snapshotID
+	}
+	if wsID := strings.TrimSpace(cfg.workspaceID); wsID != "" {
+		req.WorkspaceId = &wsID
+	}
+	if pID := strings.TrimSpace(cfg.projectID); pID != "" {
+		req.ProjectId = &pID
+	}
+
+	if !cfg.waitReady && !cfg.waitForRuntime {
+		resp, err := c.sandbox.CreateSession(ctx, connect.NewRequest(req))
+		if err != nil {
+			return nil, mapCreateSessionError(c, err)
+		}
+		return newSessionFromCreate(c, resp.Msg), nil
+	}
+
+	createCtx, cancel := c.heldCreateContext(ctx, cfg.waitTimeout)
+	defer cancel()
+	resp, err := c.sandbox.CreateSession(createCtx, connect.NewRequest(req))
+	if err != nil {
+		return nil, mapCreateSessionError(c, err)
+	}
+	sess := newSessionFromCreate(c, resp.Msg)
+	if sess.State.IsReady() {
+		return sess, nil
+	}
+	if sess.State.IsTerminal() {
+		return nil, sess.terminalStateError()
+	}
+	// Older servers (or waits past the server hold) settle via the streaming wait.
+	if err := sess.WaitReady(ctx, cfg.waitTimeout); err != nil {
+		return nil, err
+	}
+	return sess, nil
+}
+
+func mapCreateSessionError(client *Client, err error) error {
+	var connectErr *connect.Error
+	if errors.As(err, &connectErr) {
+		for _, rawDetail := range connectErr.Details() {
+			detail, detailErr := rawDetail.Value()
+			if detailErr != nil {
+				continue
+			}
+			failure, ok := detail.(*sandboxv1.TemplateRuntimeFailure)
+			if !ok {
+				continue
+			}
+			return &TemplateRuntimeFailedError{
+				Session: newSession(client, failure.GetSession()),
+				Reason:  failure.GetReason(),
+				Err:     err,
+			}
+		}
+	}
+	return mapError(err)
+}
+
+// List lists sessions scoped to client owner.
+func (c *Client) List(ctx context.Context, opts ...ListOption) ([]*Session, error) {
+	cfg := defaultListConfig()
+	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
+		opt.applyList(&cfg)
+	}
+	req := &sandboxv1.ListSessionsRequest{
+		PageSize: 100,
+		Tags:     append([]string(nil), cfg.tags...),
+		Sticky:   cfg.sticky,
+	}
+
+	resp, err := c.sandbox.ListSessions(ctx, connect.NewRequest(req))
+	if err != nil {
+		return nil, mapError(err)
+	}
+	return sessionsFromProto(c, resp.Msg.Sessions), nil
+}
+
+// ListWorkspaceSandboxes lists sessions for one workspace.
+func (c *Client) ListWorkspaceSandboxes(ctx context.Context, workspaceID string, opts ...ListOption) ([]*Session, error) {
+	cfg := defaultListConfig()
+	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
+		opt.applyList(&cfg)
+	}
+	resp, err := c.sandbox.ListWorkspaceSandboxes(ctx, connect.NewRequest(&sandboxv1.ListWorkspaceSandboxesRequest{
+		WorkspaceId: strings.TrimSpace(workspaceID),
+		PageSize:    100,
+		Tags:        append([]string(nil), cfg.tags...),
+		Sticky:      cfg.sticky,
+	}))
+	if err != nil {
+		return nil, mapError(err)
+	}
+	return sessionsFromProto(c, resp.Msg.Sessions), nil
+}
+
+// ListProjectSandboxes lists sessions for one project.
+func (c *Client) ListProjectSandboxes(ctx context.Context, projectID string, opts ...ListOption) ([]*Session, error) {
+	cfg := defaultListConfig()
+	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
+		opt.applyList(&cfg)
+	}
+	resp, err := c.sandbox.ListProjectSandboxes(ctx, connect.NewRequest(&sandboxv1.ListProjectSandboxesRequest{
+		ProjectId: strings.TrimSpace(projectID),
+		PageSize:  100,
+		Tags:      append([]string(nil), cfg.tags...),
+		Sticky:    cfg.sticky,
+	}))
+	if err != nil {
+		return nil, mapError(err)
+	}
+	return sessionsFromProto(c, resp.Msg.Sessions), nil
+}
+
+func sessionsFromProto(client *Client, protoSessions []*sandboxv1.SandboxSession) []*Session {
+	sessions := make([]*Session, 0, len(protoSessions))
+	for _, protoSession := range protoSessions {
+		sessions = append(sessions, newSession(client, protoSession))
+	}
+	return sessions
+}
+
+// Session returns a local session handle for an already-known session ID without an API lookup.
+func (c *Client) Session(sessionID string) (*Session, error) {
+	sessionID = strings.TrimSpace(sessionID)
+	if sessionID == "" {
+		return nil, errors.New("sandbox: session id is required")
+	}
+	return newSession(c, &sandboxv1.SandboxSession{Id: sessionID}), nil
+}
+
+// Get fetches a single session by ID.
+func (c *Client) Get(ctx context.Context, sessionID string) (*Session, error) {
+	resp, err := c.sandbox.GetSession(ctx, connect.NewRequest(&sandboxv1.GetSessionRequest{
+		SessionId: sessionID,
+	}))
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return newSession(c, resp.Msg.Session), nil
+}
+
+// CreateAndWait is kept for compatibility: Create already waits by default.
+// It is equivalent to Create with WithWaitTimeout(timeout).
+func (c *Client) CreateAndWait(ctx context.Context, timeout time.Duration, opts ...CreateOption) (*Session, error) {
+	return c.Create(ctx, append(opts, WithWaitReady(true), WithWaitTimeout(timeout))...)
+}
+
+// heldCreateContext bounds the held create under the transport timeout: the server returns 2s ahead
+// of the request deadline, so the response beats the HTTP client cancel; WaitReady covers leftover budget.
+func (c *Client) heldCreateContext(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	bound := timeout
+	if c.httpClient != nil && c.httpClient.Timeout > 3*time.Second {
+		if transportBound := c.httpClient.Timeout - time.Second; bound <= 0 || transportBound < bound {
+			bound = transportBound
+		}
+	}
+	if bound <= 0 {
+		return ctx, func() {}
+	}
+	return context.WithTimeout(ctx, bound)
+}
+
+// WaitSnapshotReady polls until a snapshot reaches READY or a terminal state.
+func (c *Client) WaitSnapshotReady(ctx context.Context, snapshotID string, timeout time.Duration) (*Snapshot, error) {
+	deadline := time.Now().Add(timeout)
+	attempt := 0
+	for time.Now().Before(deadline) {
+		snap, err := c.GetSnapshot(ctx, snapshotID)
+		if err != nil {
+			return nil, err
+		}
+		if snap.State.IsReady() {
+			return snap, nil
+		}
+		if snap.State.IsTerminal() {
+			return nil, fmt.Errorf("snapshot entered terminal state: %s", snap.State)
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(pollBackoff(attempt)):
+		}
+		attempt++
+	}
+	return nil, fmt.Errorf("timeout waiting for snapshot %s to become ready", snapshotID)
+}
+
+// CreateSnapshotAndWait creates a snapshot and waits for it to reach READY state.
+func (c *Client) CreateSnapshotAndWait(ctx context.Context, sessionID, name string, expiresAt *time.Time, timeout time.Duration) (*Snapshot, error) {
+	snap, err := c.CreateSnapshot(ctx, sessionID, name, expiresAt)
+	if err != nil {
+		return nil, err
+	}
+	return c.WaitSnapshotReady(ctx, snap.ID, timeout)
+}
+
+// WaitVolumeReady polls until a volume reaches AVAILABLE or a terminal state.
+func (c *Client) WaitVolumeReady(ctx context.Context, volumeID string, timeout time.Duration) (*Volume, error) {
+	deadline := time.Now().Add(timeout)
+	attempt := 0
+	for time.Now().Before(deadline) {
+		vol, err := c.GetVolume(ctx, volumeID)
+		if err != nil {
+			return nil, err
+		}
+		if vol.State.IsReady() {
+			return vol, nil
+		}
+		if vol.State.IsTerminal() {
+			return nil, fmt.Errorf("volume entered terminal state: %s", vol.State)
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(pollBackoff(attempt)):
+		}
+		attempt++
+	}
+	return nil, fmt.Errorf("timeout waiting for volume %s to become ready", volumeID)
+}
+
+type authInterceptor struct {
+	authToken  string
+	cookieName string
+}
+
+func (i *authInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
+	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		if req.Spec().IsClient {
+			i.setHeaders(req.Header())
+		}
+		return next(ctx, req)
+	}
+}
+
+func (i *authInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+	return next
+}
+
+func (i *authInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
+	return func(ctx context.Context, spec connect.Spec) connect.StreamingClientConn {
+		conn := next(ctx, spec)
+		i.setHeaders(conn.RequestHeader())
+		return conn
+	}
+}
+
+func (i *authInterceptor) setHeaders(headerSetter interface {
+	Set(string, string)
+}) {
+	setClientAuthHeaders(headerSetter, i.authToken, i.cookieName)
+}
+
+func setClientAuthHeaders(headerSetter interface {
+	Set(string, string)
+}, authToken, cookieName string) {
+	headerSetter.Set(headerClientFamily, "go_sdk")
+	headerSetter.Set(headerClientGeneration, "project_v1")
+	token := strings.TrimSpace(authToken)
+	if token == "" {
+		return
+	}
+	if strings.HasPrefix(token, "tk_") {
+		headerSetter.Set(headerAuthorization, "Bearer "+token)
+		return
+	}
+	if strings.HasPrefix(token, "ory_st_") {
+		headerSetter.Set(headerSessionToken, token)
+		return
+	}
+	headerSetter.Set("Cookie", cookieName+"="+token)
+}
+
+func (c *Client) setAuthHeaders(headers http.Header) {
+	if c == nil {
+		return
+	}
+	setClientAuthHeaders(headers, c.authToken, c.cookieName)
+}
+
+func (c *Client) gatewaySSHURL(sessionID string) string {
+	if c == nil || strings.TrimSpace(c.gatewayAddress) == "" || strings.TrimSpace(sessionID) == "" {
+		return ""
+	}
+
+	u, err := url.Parse(c.gatewayAddress)
+	if err != nil {
+		return ""
+	}
+
+	u.Path = path.Join(strings.TrimRight(u.Path, "/"), "v1", "ssh", sessionID)
+	u.RawQuery = ""
+	u.Fragment = ""
+	switch u.Scheme {
+	case "http":
+		u.Scheme = "ws"
+	case "https":
+		u.Scheme = "wss"
+	}
+	return u.String()
+}
+
+func deriveGatewayAddress(baseURL string) string {
+	u, err := url.Parse(strings.TrimSpace(baseURL))
+	if err != nil || u.Host == "" {
+		return ""
+	}
+
+	host := u.Hostname()
+	port := u.Port()
+
+	switch {
+	case strings.HasPrefix(host, "api."):
+		host = "sandbox-gateway." + strings.TrimPrefix(host, "api.")
+	case strings.HasPrefix(host, "app."):
+		host = "sandbox-gateway." + strings.TrimPrefix(host, "app.")
+	default:
+		host = "sandbox-gateway." + host
+	}
+
+	u.Host = host
+	if port != "" {
+		u.Host = net.JoinHostPort(host, port)
+	}
+	u.Path = ""
+	u.RawPath = ""
+	u.RawQuery = ""
+	u.Fragment = ""
+	return u.String()
+}
