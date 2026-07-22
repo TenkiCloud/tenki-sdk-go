@@ -82,13 +82,7 @@ Base URL resolution: `WithBaseURL()` > `TENKI_API_URL` env var > `https://api.te
 | `TENKI_API_KEY` | Auth token fallback |
 | `TENKI_API_URL` | Base URL fallback   |
 
-The SDK accepts these token forms:
-
-- API key (`tk_*`): sent as `Authorization: Bearer <token>`
-- Ory session token (`ory_st_*`): sent as `X-Session-Token`
-- Browser session: sent as `Cookie: tenki_session=<token>` (override with `WithCookieName`)
-
-For most integrations, use an API key.
+Use an API key (`tk_*`), sent as `Authorization: Bearer <token>`.
 
 ## API
 
