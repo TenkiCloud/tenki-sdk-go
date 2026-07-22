@@ -161,6 +161,7 @@ const (
 	VolumeState_VOLUME_STATE_AVAILABLE   VolumeState = 1
 	VolumeState_VOLUME_STATE_DELETING    VolumeState = 2
 	VolumeState_VOLUME_STATE_DELETED     VolumeState = 3
+	VolumeState_VOLUME_STATE_IN_USE      VolumeState = 4
 )
 
 // Enum value maps for VolumeState.
@@ -170,12 +171,14 @@ var (
 		1: "VOLUME_STATE_AVAILABLE",
 		2: "VOLUME_STATE_DELETING",
 		3: "VOLUME_STATE_DELETED",
+		4: "VOLUME_STATE_IN_USE",
 	}
 	VolumeState_value = map[string]int32{
 		"VOLUME_STATE_UNSPECIFIED": 0,
 		"VOLUME_STATE_AVAILABLE":   1,
 		"VOLUME_STATE_DELETING":    2,
 		"VOLUME_STATE_DELETED":     3,
+		"VOLUME_STATE_IN_USE":      4,
 	}
 )
 
@@ -14035,12 +14038,13 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x16COMMAND_STATUS_RUNNING\x10\x02\x12\x1c\n" +
 	"\x18COMMAND_STATUS_SUCCEEDED\x10\x03\x12\x19\n" +
 	"\x15COMMAND_STATUS_FAILED\x10\x04\x12\x1c\n" +
-	"\x18COMMAND_STATUS_TIMED_OUT\x10\x05*|\n" +
+	"\x18COMMAND_STATUS_TIMED_OUT\x10\x05*\x95\x01\n" +
 	"\vVolumeState\x12\x1c\n" +
 	"\x18VOLUME_STATE_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16VOLUME_STATE_AVAILABLE\x10\x01\x12\x19\n" +
 	"\x15VOLUME_STATE_DELETING\x10\x02\x12\x18\n" +
-	"\x14VOLUME_STATE_DELETED\x10\x03*\xba\x01\n" +
+	"\x14VOLUME_STATE_DELETED\x10\x03\x12\x17\n" +
+	"\x13VOLUME_STATE_IN_USE\x10\x04*\xba\x01\n" +
 	"\rSnapshotState\x12\x1e\n" +
 	"\x1aSNAPSHOT_STATE_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17SNAPSHOT_STATE_CREATING\x10\x01\x12\x18\n" +

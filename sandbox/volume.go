@@ -18,6 +18,7 @@ const (
 	VolumeStateAvailable   VolumeState = "AVAILABLE"
 	VolumeStateDeleting    VolumeState = "DELETING"
 	VolumeStateDeleted     VolumeState = "DELETED"
+	VolumeStateInUse       VolumeState = "IN_USE"
 )
 
 const (
@@ -263,6 +264,8 @@ func volumeStateFromProto(state sandboxv1.VolumeState) VolumeState {
 		return VolumeStateDeleting
 	case sandboxv1.VolumeState_VOLUME_STATE_DELETED:
 		return VolumeStateDeleted
+	case sandboxv1.VolumeState_VOLUME_STATE_IN_USE:
+		return VolumeStateInUse
 	default:
 		return VolumeStateUnspecified
 	}

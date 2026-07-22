@@ -205,6 +205,40 @@ func TestGetVolume(t *testing.T) {
 		}
 	})
 
+	t.Run("in use", func(t *testing.T) {
+		t.Parallel()
+		h := &volumeHandler{t: t}
+		h.getVolumeFn = func(_ *connect.Request[sandboxv1.GetVolumeRequest]) (*connect.Response[sandboxv1.GetVolumeResponse], error) {
+			return connect.NewResponse(&sandboxv1.GetVolumeResponse{
+				Volume: &sandboxv1.Volume{
+					Id: "vol-shared", State: sandboxv1.VolumeState_VOLUME_STATE_IN_USE, Tags: []string{"shared"},
+				},
+				ActiveAttachments: []*sandboxv1.VolumeAttachment{
+					{SessionId: "sess-1", MountPath: "/one", Readonly: true, State: "ATTACHED"},
+					{SessionId: "sess-2", MountPath: "/two", Readonly: true, State: "ATTACHED"},
+				},
+			}), nil
+		}
+
+		_, client := newVolumeTestServer(t, h)
+		vol, err := client.GetVolume(context.Background(), "vol-shared")
+		if err != nil {
+			t.Fatalf("GetVolume: %v", err)
+		}
+		if vol.State != VolumeStateInUse {
+			t.Fatalf("expected IN_USE, got %q", vol.State)
+		}
+		if len(vol.ActiveAttachments) != 2 || !vol.ActiveAttachments[0].ReadOnly || !vol.ActiveAttachments[1].ReadOnly {
+			t.Fatalf("expected two read-only attachments: %#v", vol.ActiveAttachments)
+		}
+		if len(vol.Tags) != 1 || vol.Tags[0] != "shared" {
+			t.Fatalf("unexpected tags: %#v", vol.Tags)
+		}
+		if vol.IsDeletable() {
+			t.Fatal("IN_USE volume should not be deletable")
+		}
+	})
+
 	t.Run("not found", func(t *testing.T) {
 		t.Parallel()
 		h := &volumeHandler{t: t}
