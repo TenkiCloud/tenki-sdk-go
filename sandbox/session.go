@@ -91,6 +91,7 @@ type Session struct {
 	SourceSnapshotID          string
 	SourceRegistryWorkspaceID string
 	SourceRegistryRef         string
+	SourceTemplateID          string
 }
 
 type ExposedPort struct {
@@ -173,6 +174,7 @@ func (s *Session) apply(protoSession *sandboxv1.SandboxSession) {
 	s.SourceSnapshotID = protoSession.GetSourceSnapshotId()
 	s.SourceRegistryWorkspaceID = protoSession.GetSourceRegistryWorkspaceId()
 	s.SourceRegistryRef = protoSession.GetSourceRegistryRef()
+	s.SourceTemplateID = protoSession.GetSourceTemplateId()
 	s.Metadata = cloneStringMap(protoSession.Metadata)
 	s.Tags = append(s.Tags[:0], protoSession.Tags...)
 	s.PauseSnapshot = snapshotFromProto(protoSession.PauseSnapshot)
@@ -268,6 +270,7 @@ func (s *Session) copyFrom(other *Session) {
 	s.SourceSnapshotID = other.SourceSnapshotID
 	s.SourceRegistryWorkspaceID = other.SourceRegistryWorkspaceID
 	s.SourceRegistryRef = other.SourceRegistryRef
+	s.SourceTemplateID = other.SourceTemplateID
 }
 
 func (s *Session) configureDataPlane(endpoint string, credential *sandboxv1.SessionCredential) {
@@ -710,6 +713,67 @@ func (s *Session) waitReadyPoll(ctx context.Context, timeout time.Duration) erro
 		attempt++
 	}
 	return fmt.Errorf("timeout waiting for session %s to become ready", s.ID)
+}
+
+// resumeRevertGrace tolerates stale stopped-state reads (read-replica lag)
+// right after Resume before WaitResumed has observed RESUMING from the server.
+const resumeRevertGrace = 3 * time.Second
+
+// WaitResumed waits until an in-flight resume reaches RUNNING or fails.
+// Unlike WaitReady — which only treats TERMINATED/TERMINATING as terminal and
+// would spin until timeout — a session that reverts from RESUMING back to a
+// stopped state (PAUSED/USER_SHUTDOWN) returns ErrResumeFailed carrying the
+// server-side last_resume_error.
+func (s *Session) WaitResumed(ctx context.Context, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	start := time.Now()
+	sawResuming := false
+	attempt := 0
+	for time.Now().Before(deadline) {
+		updated, err := s.client.Get(ctx, s.ID)
+		if err != nil {
+			if connect.CodeOf(err) == connect.CodeNotFound {
+				// Tolerate not-found during polling (read-replica lag).
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(pollBackoff(attempt)):
+				}
+				attempt++
+				continue
+			}
+			return err
+		}
+		s.copyFrom(updated)
+		switch {
+		case s.State.IsReady():
+			return nil
+		case s.State.IsTerminal():
+			return s.terminalStateError()
+		case s.State == SessionStateResuming:
+			sawResuming = true
+		case s.State == SessionStatePaused || s.State == SessionStateUserShutdown:
+			// A stopped state is a resume failure once we saw RESUMING from
+			// the server, or after the replica-lag grace window has passed.
+			if sawResuming || time.Since(start) > resumeRevertGrace {
+				return s.resumeFailedError()
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(pollBackoff(attempt)):
+		}
+		attempt++
+	}
+	return fmt.Errorf("timeout waiting for session %s to resume", s.ID)
+}
+
+func (s *Session) resumeFailedError() error {
+	if s != nil && strings.TrimSpace(s.LastResumeError) != "" {
+		return fmt.Errorf("%w: session %s reverted to %s: %s", ErrResumeFailed, s.ID, s.State, s.LastResumeError)
+	}
+	return fmt.Errorf("%w: session %s reverted to %s", ErrResumeFailed, s.ID, s.State)
 }
 
 func (s *Session) terminalStateError() error {

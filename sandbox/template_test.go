@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -175,15 +176,15 @@ func TestCreateTemplate(t *testing.T) {
 		}
 		return connect.NewResponse(&sandboxv1.CreateTemplateResponse{
 			Template: &sandboxv1.Template{
-				Id:          "tpl-001",
-				WorkspaceId: "ws-001",
-				OwnerType:   "workspace",
-				OwnerId:     "ws-001",
-				Name:        "python",
-				BaseImageId: "sandbox",
-				SetupScript: "uv sync",
-				StartCmd:    stringPtr("uv run app"),
-				EnvVars:     map[string]string{"FOO": "bar"},
+				Id:             "tpl-001",
+				WorkspaceId:    "ws-001",
+				OwnerType:      "workspace",
+				OwnerId:        "ws-001",
+				Name:           "python",
+				BaseImageId:    "sandbox",
+				SetupScript:    "uv sync",
+				StartCmd:       stringPtr("uv run app"),
+				EnvVars:        map[string]string{"FOO": "bar"},
 				Resources:      &sandboxv1.TemplateResources{CpuCores: 4, MemoryMb: 8192},
 				DefinitionMode: sandboxv1.TemplateDefinitionMode_TEMPLATE_DEFINITION_MODE_LEGACY,
 				CreatedAt:      timestamppb.New(time.Unix(1, 0)),
@@ -502,12 +503,74 @@ func TestCreateWithImageOption(t *testing.T) {
 	}
 
 	client := newTemplateTestClient(t, h)
-	session, err := client.Create(context.Background(), WithSnapshot("snap-001"), WithImage("pub/template:prod"))
+	session, err := client.Create(context.Background(), WithImage("pub/template:prod"))
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	if session.ID != "session-1" {
 		t.Fatalf("unexpected session id: %q", session.ID)
+	}
+}
+
+func TestCreateFromTemplateSpec(t *testing.T) {
+	t.Parallel()
+
+	templateID := "8d995c1c-8e24-4b3a-a8ab-a00316357385"
+	h := &templateHandler{}
+	h.createSessionFn = func(req *connect.Request[sandboxv1.CreateSessionRequest]) (*connect.Response[sandboxv1.CreateSessionResponse], error) {
+		if req.Msg.GetTemplateSpecId() != templateID {
+			t.Fatalf("unexpected template_spec_id: %q", req.Msg.GetTemplateSpecId())
+		}
+		if !reflect.DeepEqual(req.Msg.GetSetupEnv(), map[string]string{"MODE": "dev"}) {
+			t.Fatalf("unexpected setup_env: %#v", req.Msg.GetSetupEnv())
+		}
+		if !reflect.DeepEqual(req.Msg.GetSetupSecrets(), map[string]string{"GH_TOKEN": "secret"}) {
+			t.Fatalf("unexpected setup_secrets: %#v", req.Msg.GetSetupSecrets())
+		}
+		if req.Msg.CpuCores != nil || req.Msg.MemoryMb != nil || req.Msg.DiskSizeGb != nil {
+			t.Fatal("expected default resources to be omitted for template spec")
+		}
+		return connect.NewResponse(&sandboxv1.CreateSessionResponse{Session: &sandboxv1.SandboxSession{
+			Id: "session-template-spec", State: sandboxv1.SessionState_SESSION_STATE_RUNNING,
+			OwnerType: defaultCreateOwnerType, OwnerId: defaultCreateOwnerID,
+		}}), nil
+	}
+
+	client := newTemplateTestClient(t, h)
+	_, err := client.Create(context.Background(),
+		FromTemplateSpec(&Template{ID: templateID}),
+		WithSetupEnvs(map[string]string{"MODE": "dev"}),
+		WithSetupSecrets(map[string]string{"GH_TOKEN": "secret"}),
+	)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+}
+
+func TestCreateRejectsConflictingTemplateSpecSource(t *testing.T) {
+	t.Parallel()
+
+	client := newTemplateTestClient(t, &templateHandler{})
+	_, err := client.Create(context.Background(),
+		WithImage("acme/app:latest"),
+		FromTemplateSpec("8d995c1c-8e24-4b3a-a8ab-a00316357385"),
+	)
+	if err == nil || !strings.Contains(err.Error(), "only one of image, snapshot, or template spec") {
+		t.Fatalf("expected source conflict, got %v", err)
+	}
+}
+
+func TestTemplateSpecCreateUsesLongDefaultWaitTimeout(t *testing.T) {
+	t.Parallel()
+
+	cfg := defaultCreateConfig(nil)
+	FromTemplateSpec("8d995c1c-8e24-4b3a-a8ab-a00316357385").applyCreate(&cfg)
+	if got := effectiveCreateWaitTimeout(cfg); got != DefaultTemplateSpecCreateTimeout {
+		t.Fatalf("effectiveCreateWaitTimeout() = %s, want %s", got, DefaultTemplateSpecCreateTimeout)
+	}
+	WithWaitTimeout(time.Minute).applyCreate(&cfg)
+	if got := effectiveCreateWaitTimeout(cfg); got != time.Minute {
+		t.Fatalf("explicit effectiveCreateWaitTimeout() = %s, want 1m", got)
 	}
 }
 

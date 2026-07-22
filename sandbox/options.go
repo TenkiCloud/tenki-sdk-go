@@ -36,11 +36,12 @@ const (
 )
 
 const (
-	DefaultSessionCreateTimeout  = 3 * time.Minute
-	DefaultSnapshotCreateTimeout = 5 * time.Minute
-	DefaultRestoreTimeout        = 5 * time.Minute
-	DefaultExecTimeout           = 30 * time.Second
-	DefaultVolumeDetachTimeout   = 2 * time.Minute
+	DefaultSessionCreateTimeout      = 3 * time.Minute
+	DefaultTemplateSpecCreateTimeout = 2 * time.Hour
+	DefaultSnapshotCreateTimeout     = 5 * time.Minute
+	DefaultRestoreTimeout            = 5 * time.Minute
+	DefaultExecTimeout               = 30 * time.Second
+	DefaultVolumeDetachTimeout       = 2 * time.Minute
 )
 
 type clientConfig struct {
@@ -174,6 +175,9 @@ type createConfig struct {
 	name           string
 	snapshotID     string
 	image          string
+	templateSpecID string
+	setupEnv       map[string]string
+	setupSecrets   map[string]string
 	workspaceID    string
 	projectID      string
 	metadata       map[string]string
@@ -187,6 +191,7 @@ type createConfig struct {
 	waitReady      bool
 	waitForRuntime bool
 	waitTimeout    time.Duration
+	waitTimeoutSet bool
 }
 
 type createVolumeConfig struct {
@@ -305,9 +310,6 @@ func WithName(name string) interface {
 func WithSnapshot(snapshotID string) CreateOption {
 	return createOptionFunc(func(cfg *createConfig) {
 		cfg.snapshotID = strings.TrimSpace(snapshotID)
-		if cfg.snapshotID != "" {
-			cfg.image = ""
-		}
 	})
 }
 
@@ -329,10 +331,38 @@ func WithImage[T ImageSource](image T) CreateOption {
 	}
 	return createOptionFunc(func(cfg *createConfig) {
 		cfg.image = ref
-		if cfg.image != "" {
-			cfg.snapshotID = ""
-		}
 	})
+}
+
+// TemplateSpecSource identifies a typed template by ID or resource object.
+type TemplateSpecSource interface {
+	string | *Template
+}
+
+// FromTemplateSpec executes the current typed template spec directly in the new session.
+func FromTemplateSpec[T TemplateSpecSource](template T) CreateOption {
+	templateID := ""
+	switch value := any(template).(type) {
+	case string:
+		templateID = strings.TrimSpace(value)
+	case *Template:
+		if value != nil {
+			templateID = strings.TrimSpace(value.ID)
+		}
+	}
+	return createOptionFunc(func(cfg *createConfig) {
+		cfg.templateSpecID = templateID
+	})
+}
+
+// WithSetupEnvs sets non-secret environment variables used only by template setup.
+func WithSetupEnvs(env map[string]string) CreateOption {
+	return createOptionFunc(func(cfg *createConfig) { cfg.setupEnv = cloneStringMap(env) })
+}
+
+// WithSetupSecrets sets secret environment variables used only by template setup.
+func WithSetupSecrets(secrets map[string]string) CreateOption {
+	return createOptionFunc(func(cfg *createConfig) { cfg.setupSecrets = cloneStringMap(secrets) })
 }
 
 func defaultCreateConfig(client *Client) createConfig {
@@ -850,10 +880,11 @@ func WithWaitForRuntime(wait bool) CreateOption {
 	})
 }
 
-// WithWaitTimeout overrides how long Create waits for the session to be ready (default 3m).
+// WithWaitTimeout overrides the readiness wait (default 2h for direct template specs, otherwise 3m).
 func WithWaitTimeout(timeout time.Duration) CreateOption {
 	return createOptionFunc(func(cfg *createConfig) {
 		cfg.waitTimeout = timeout
+		cfg.waitTimeoutSet = true
 	})
 }
 

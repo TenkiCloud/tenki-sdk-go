@@ -36,6 +36,7 @@ var (
 	ErrInvalidResourceConfig   = errors.New("sandbox: invalid resource configuration")
 	ErrSnapshotNotFound        = errors.New("sandbox: snapshot not found")
 	ErrSnapshotFailed          = errors.New("sandbox: snapshot failed")
+	ErrResumeFailed            = errors.New("sandbox: resume failed")
 	ErrSnapshotNotDurable      = errors.New("sandbox: snapshot upload did not become durable")
 	ErrTemplateNotFound        = errors.New("sandbox: template not found")
 	ErrRegistryImageNotFound   = errors.New("sandbox: registry image not found")

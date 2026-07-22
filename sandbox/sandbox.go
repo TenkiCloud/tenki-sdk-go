@@ -162,6 +162,15 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 	if err := validateCreateResources(cfg.cpuCores, cfg.memoryMB, cfg.diskSizeGB); err != nil {
 		return nil, err
 	}
+	sourceCount := 0
+	for _, source := range []string{cfg.image, cfg.snapshotID, cfg.templateSpecID} {
+		if source != "" {
+			sourceCount++
+		}
+	}
+	if sourceCount > 1 {
+		return nil, errors.New("sandbox: only one of image, snapshot, or template spec may be set")
+	}
 
 	req := &sandboxv1.CreateSessionRequest{
 		OwnerType:         defaultCreateOwnerType,
@@ -175,6 +184,8 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 		SshAuthorizedKeys: append([]string(nil), cfg.sshKeys...),
 		EnableOpencode:    cfg.enableOpenCode,
 		CloneRepoUrl:      cfg.cloneRepoURL,
+		SetupEnv:          cloneStringMap(cfg.setupEnv),
+		SetupSecrets:      cloneStringMap(cfg.setupSecrets),
 	}
 	if len(cfg.volumes) > 0 {
 		req.Volumes = make([]*sandboxv1.VolumeMount, 0, len(cfg.volumes))
@@ -210,7 +221,7 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 	if cfg.sticky {
 		req.Sticky = true
 	}
-	hasSource := cfg.image != "" || cfg.snapshotID != ""
+	hasSource := cfg.image != "" || cfg.snapshotID != "" || cfg.templateSpecID != ""
 	if cfg.cpuCores != nil && (!hasSource || cfg.cpuCoresSet) {
 		req.CpuCores = cfg.cpuCores
 	}
@@ -224,6 +235,8 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 		req.RegistryRef = &cfg.image
 	} else if cfg.snapshotID != "" {
 		req.SnapshotId = &cfg.snapshotID
+	} else if cfg.templateSpecID != "" {
+		req.TemplateSpecId = &cfg.templateSpecID
 	}
 	if wsID := strings.TrimSpace(cfg.workspaceID); wsID != "" {
 		req.WorkspaceId = &wsID
@@ -240,7 +253,8 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 		return newSessionFromCreate(c, resp.Msg), nil
 	}
 
-	createCtx, cancel := c.heldCreateContext(ctx, cfg.waitTimeout)
+	waitTimeout := effectiveCreateWaitTimeout(cfg)
+	createCtx, cancel := c.heldCreateContext(ctx, waitTimeout)
 	defer cancel()
 	resp, err := c.sandbox.CreateSession(createCtx, connect.NewRequest(req))
 	if err != nil {
@@ -254,10 +268,17 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 		return nil, sess.terminalStateError()
 	}
 	// Older servers (or waits past the server hold) settle via the streaming wait.
-	if err := sess.WaitReady(ctx, cfg.waitTimeout); err != nil {
+	if err := sess.WaitReady(ctx, waitTimeout); err != nil {
 		return nil, err
 	}
 	return sess, nil
+}
+
+func effectiveCreateWaitTimeout(cfg createConfig) time.Duration {
+	if cfg.templateSpecID != "" && !cfg.waitTimeoutSet {
+		return DefaultTemplateSpecCreateTimeout
+	}
+	return cfg.waitTimeout
 }
 
 func mapCreateSessionError(client *Client, err error) error {
