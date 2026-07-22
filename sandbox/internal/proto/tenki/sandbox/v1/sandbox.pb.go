@@ -2080,8 +2080,8 @@ type CreateSessionRequest struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	OwnerId           string                 `protobuf:"bytes,1,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
 	OwnerType         string                 `protobuf:"bytes,2,opt,name=owner_type,json=ownerType,proto3" json:"owner_type,omitempty"`
-	AllowInbound      bool                   `protobuf:"varint,3,opt,name=allow_inbound,json=allowInbound,proto3" json:"allow_inbound,omitempty"`
-	AllowOutbound     bool                   `protobuf:"varint,4,opt,name=allow_outbound,json=allowOutbound,proto3" json:"allow_outbound,omitempty"`
+	AllowInbound      *bool                  `protobuf:"varint,3,opt,name=allow_inbound,json=allowInbound,proto3,oneof" json:"allow_inbound,omitempty"`
+	AllowOutbound     *bool                  `protobuf:"varint,4,opt,name=allow_outbound,json=allowOutbound,proto3,oneof" json:"allow_outbound,omitempty"`
 	MaxDuration       *durationpb.Duration   `protobuf:"bytes,5,opt,name=max_duration,json=maxDuration,proto3" json:"max_duration,omitempty"`
 	CpuCores          *int32                 `protobuf:"varint,6,opt,name=cpu_cores,json=cpuCores,proto3,oneof" json:"cpu_cores,omitempty"`
 	MemoryMb          *int32                 `protobuf:"varint,7,opt,name=memory_mb,json=memoryMb,proto3,oneof" json:"memory_mb,omitempty"`
@@ -2171,15 +2171,15 @@ func (x *CreateSessionRequest) GetOwnerType() string {
 }
 
 func (x *CreateSessionRequest) GetAllowInbound() bool {
-	if x != nil {
-		return x.AllowInbound
+	if x != nil && x.AllowInbound != nil {
+		return *x.AllowInbound
 	}
 	return false
 }
 
 func (x *CreateSessionRequest) GetAllowOutbound() bool {
-	if x != nil {
-		return x.AllowOutbound
+	if x != nil && x.AllowOutbound != nil {
+		return *x.AllowOutbound
 	}
 	return false
 }
@@ -13119,17 +13119,17 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\bended_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\x12,\n" +
 	"\x12stdout_artifact_id\x18\n" +
 	" \x01(\tR\x10stdoutArtifactId\x12,\n" +
-	"\x12stderr_artifact_id\x18\v \x01(\tR\x10stderrArtifactId\"\x90\x10\n" +
+	"\x12stderr_artifact_id\x18\v \x01(\tR\x10stderrArtifactId\"\xbf\x10\n" +
 	"\x14CreateSessionRequest\x12\"\n" +
 	"\bowner_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\aownerId\x123\n" +
 	"\n" +
-	"owner_type\x18\x02 \x01(\tB\x14\xbaH\x11r\x0fR\aSERVICER\x04USERR\townerType\x12#\n" +
-	"\rallow_inbound\x18\x03 \x01(\bR\fallowInbound\x12%\n" +
-	"\x0eallow_outbound\x18\x04 \x01(\bR\rallowOutbound\x12<\n" +
+	"owner_type\x18\x02 \x01(\tB\x14\xbaH\x11r\x0fR\aSERVICER\x04USERR\townerType\x12(\n" +
+	"\rallow_inbound\x18\x03 \x01(\bH\x00R\fallowInbound\x88\x01\x01\x12*\n" +
+	"\x0eallow_outbound\x18\x04 \x01(\bH\x01R\rallowOutbound\x88\x01\x01\x12<\n" +
 	"\fmax_duration\x18\x05 \x01(\v2\x19.google.protobuf.DurationR\vmaxDuration\x12+\n" +
-	"\tcpu_cores\x18\x06 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x10(\x01H\x00R\bcpuCores\x88\x01\x01\x12|\n" +
+	"\tcpu_cores\x18\x06 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x10(\x01H\x02R\bcpuCores\x88\x01\x01\x12|\n" +
 	"\tmemory_mb\x18\a \x01(\x05BZ\xbaHW\xba\x01K\n" +
-	"\x16memory_mb.aligned_2mib\x12\"memory_mb must be aligned to 2 MiB\x1a\rthis % 2 == 0\x1a\a\x18\x80\x80\x04(\x80\x01H\x01R\bmemoryMb\x88\x01\x01\x12P\n" +
+	"\x16memory_mb.aligned_2mib\x12\"memory_mb must be aligned to 2 MiB\x1a\rthis % 2 == 0\x1a\a\x18\x80\x80\x04(\x80\x01H\x03R\bmemoryMb\x88\x01\x01\x12P\n" +
 	"\bmetadata\x18\b \x03(\v24.tenki.sandbox.v1.CreateSessionRequest.MetadataEntryR\bmetadata\x12A\n" +
 	"\x03env\x18\t \x03(\v2/.tenki.sandbox.v1.CreateSessionRequest.EnvEntryR\x03env\x12'\n" +
 	"\x0fenable_opencode\x18\n" +
@@ -13138,23 +13138,24 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x13ssh_authorized_keys\x18\f \x03(\tR\x11sshAuthorizedKeys\x12\x12\n" +
 	"\x04name\x18\r \x01(\tR\x04name\x127\n" +
 	"\avolumes\x18\x0e \x03(\v2\x1d.tenki.sandbox.v1.VolumeMountR\avolumes\x12.\n" +
-	"\vsnapshot_id\x18\x0f \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x02R\n" +
+	"\vsnapshot_id\x18\x0f \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x04R\n" +
 	"snapshotId\x88\x01\x01\x12&\n" +
-	"\fregistry_ref\x18\x12 \x01(\tH\x03R\vregistryRef\x88\x01\x01\x120\n" +
-	"\fworkspace_id\x18\x13 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x04R\vworkspaceId\x88\x01\x01\x12.\n" +
+	"\fregistry_ref\x18\x12 \x01(\tH\x05R\vregistryRef\x88\x01\x01\x120\n" +
+	"\fworkspace_id\x18\x13 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x06R\vworkspaceId\x88\x01\x01\x12.\n" +
 	"\n" +
 	"project_id\x18\x14 \x01(\tB\n" +
-	"\xbaH\x05r\x03\xb0\x01\x01\x18\x01H\x05R\tprojectId\x88\x01\x01\x120\n" +
-	"\fdisk_size_gb\x18\x15 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x05H\x06R\n" +
+	"\xbaH\x05r\x03\xb0\x01\x01\x18\x01H\aR\tprojectId\x88\x01\x01\x120\n" +
+	"\fdisk_size_gb\x18\x15 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x05H\bR\n" +
 	"diskSizeGb\x88\x01\x01\x12;\n" +
 	"\x04tags\x18\x16 \x03(\tB'\xbaH$\x92\x01!\x10\x14\"\x1dr\x1b\x18 2\x17^[a-z0-9][a-z0-9_:.-]*$R\x04tags\x12>\n" +
-	"\x14idle_timeout_minutes\x18\x17 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\aR\x12idleTimeoutMinutes\x88\x01\x01\x12G\n" +
-	"\x0fpause_retention\x18\x18 \x01(\v2\x19.google.protobuf.DurationH\bR\x0epauseRetention\x88\x01\x01\x12\x16\n" +
+	"\x14idle_timeout_minutes\x18\x17 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\tR\x12idleTimeoutMinutes\x88\x01\x01\x12G\n" +
+	"\x0fpause_retention\x18\x18 \x01(\v2\x19.google.protobuf.DurationH\n" +
+	"R\x0epauseRetention\x88\x01\x01\x12\x16\n" +
 	"\x06sticky\x18\x19 \x01(\bR\x06sticky\x12\x1d\n" +
 	"\n" +
 	"wait_ready\x18\x1a \x01(\bR\twaitReady\x12(\n" +
 	"\x10wait_for_runtime\x18\x1b \x01(\bR\x0ewaitForRuntime\x127\n" +
-	"\x10template_spec_id\x18\x1c \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\tR\x0etemplateSpecId\x88\x01\x01\x12\x85\x01\n" +
+	"\x10template_spec_id\x18\x1c \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\vR\x0etemplateSpecId\x88\x01\x01\x12\x85\x01\n" +
 	"\tsetup_env\x18\x1d \x03(\v24.tenki.sandbox.v1.CreateSessionRequest.SetupEnvEntryB2\xbaH/\x9a\x01,\x10@\"!r\x1f\x10\x01\x18\x80\x012\x18^[A-Za-z_][A-Za-z0-9_]*$*\x05r\x03\x18\x80@R\bsetupEnv\x12\x91\x01\n" +
 	"\rsetup_secrets\x18\x1e \x03(\v28.tenki.sandbox.v1.CreateSessionRequest.SetupSecretsEntryB2\xbaH/\x9a\x01,\x10@\"!r\x1f\x10\x01\x18\x80\x012\x18^[A-Za-z_][A-Za-z0-9_]*$*\x05r\x03\x18\x80@R\fsetupSecrets\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
@@ -13168,7 +13169,9 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a?\n" +
 	"\x11SetupSecretsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\f\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x10\n" +
+	"\x0e_allow_inboundB\x11\n" +
+	"\x0f_allow_outboundB\f\n" +
 	"\n" +
 	"_cpu_coresB\f\n" +
 	"\n" +

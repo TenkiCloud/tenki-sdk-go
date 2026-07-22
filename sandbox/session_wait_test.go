@@ -20,6 +20,8 @@ type waitSessionHandler struct {
 	getCalls             atomic.Int32
 	createWaitReady      atomic.Bool
 	createWaitForRuntime atomic.Bool
+	createAllowInbound   *bool
+	createAllowOutbound  *bool
 	waitErr              error
 	terminalError        string
 	runtimeFailure       bool
@@ -28,6 +30,14 @@ type waitSessionHandler struct {
 func (h *waitSessionHandler) CreateSession(_ context.Context, req *connect.Request[sandboxv1.CreateSessionRequest]) (*connect.Response[sandboxv1.CreateSessionResponse], error) {
 	h.createWaitReady.Store(req.Msg.WaitReady)
 	h.createWaitForRuntime.Store(req.Msg.WaitForRuntime)
+	if req.Msg.AllowInbound != nil {
+		allowInbound := req.Msg.GetAllowInbound()
+		h.createAllowInbound = &allowInbound
+	}
+	if req.Msg.AllowOutbound != nil {
+		allowOutbound := req.Msg.GetAllowOutbound()
+		h.createAllowOutbound = &allowOutbound
+	}
 	if h.runtimeFailure {
 		connectErr := connect.NewError(connect.CodeFailedPrecondition, errors.New("template runtime failed"))
 		detail, err := connect.NewErrorDetail(&sandboxv1.TemplateRuntimeFailure{
@@ -54,6 +64,78 @@ func (h *waitSessionHandler) CreateSession(_ context.Context, req *connect.Reque
 		OwnerType: "SERVICE",
 		OwnerId:   "self",
 	}}), nil
+}
+
+func TestCreateSendsOutboundPolicyPresence(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		opts []CreateOption
+		want bool
+	}{
+		{name: "default true", want: true},
+		{name: "explicit true", opts: []CreateOption{WithAllowOutbound(true)}, want: true},
+		{name: "explicit false", opts: []CreateOption{WithAllowOutbound(false)}, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			handler := &waitSessionHandler{}
+			server, client := newWaitSessionTestServer(t, handler)
+			defer server.Close()
+
+			opts := append([]CreateOption{WithWaitReady(false)}, tt.opts...)
+			_, err := client.Create(context.Background(), opts...)
+			if err != nil {
+				t.Fatalf("Create: %v", err)
+			}
+			if handler.createAllowOutbound == nil {
+				t.Fatal("CreateSession allow_outbound is absent")
+			}
+			if got := *handler.createAllowOutbound; got != tt.want {
+				t.Fatalf("CreateSession allow_outbound = %t, want %t", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCreateSendsInboundPolicyPresence(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		opts []CreateOption
+		want bool
+	}{
+		{name: "default true", want: true},
+		{name: "explicit true", opts: []CreateOption{WithAllowInbound(true)}, want: true},
+		{name: "explicit false", opts: []CreateOption{WithAllowInbound(false)}, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			handler := &waitSessionHandler{}
+			server, client := newWaitSessionTestServer(t, handler)
+			defer server.Close()
+
+			opts := append([]CreateOption{WithWaitReady(false)}, tt.opts...)
+			_, err := client.Create(context.Background(), opts...)
+			if err != nil {
+				t.Fatalf("Create: %v", err)
+			}
+			if handler.createAllowInbound == nil {
+				t.Fatal("CreateSession allow_inbound is absent")
+			}
+			if got := *handler.createAllowInbound; got != tt.want {
+				t.Fatalf("CreateSession allow_inbound = %t, want %t", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestCreateReturnsTypedTemplateRuntimeFailure(t *testing.T) {
