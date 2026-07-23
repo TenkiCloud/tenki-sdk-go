@@ -380,15 +380,27 @@ func (c *Client) ListTemplates(ctx context.Context, opts ...ListOption) ([]*Temp
 		}
 		opt.applyList(&cfg)
 	}
-	resp, err := c.sandbox.ListTemplates(ctx, connect.NewRequest(&sandboxv1.ListTemplatesRequest{
-		WorkspaceId: cfg.workspaceID,
-		PageSize:    100,
-		Tags:        append([]string(nil), cfg.tags...),
-	}))
-	if err != nil {
-		return nil, mapError(err)
+	var templates []*Template
+	var pageToken string
+	for {
+		resp, err := c.sandbox.ListTemplates(ctx, connect.NewRequest(&sandboxv1.ListTemplatesRequest{
+			WorkspaceId: cfg.workspaceID,
+			PageSize:    automaticPageSize,
+			PageToken:   pageToken,
+			Tags:        append([]string(nil), cfg.tags...),
+		}))
+		if err != nil {
+			return nil, mapError(err)
+		}
+		templates = append(templates, templatesFromProto(resp.Msg.Templates)...)
+		pageToken, err = advancePageToken(pageToken, resp.Msg.NextPageToken)
+		if err != nil {
+			return nil, err
+		}
+		if pageToken == "" {
+			return templates, nil
+		}
 	}
-	return templatesFromProto(resp.Msg.Templates), nil
 }
 
 // UpdateTemplate updates one template (*Template or ID string). Metadata is

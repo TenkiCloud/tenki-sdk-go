@@ -45,6 +45,7 @@ var (
 	ErrTemplateBuildFailed     = errors.New("sandbox: template build failed")
 	ErrTemplateBuildInProgress = errors.New("sandbox: template build already in progress")
 	ErrTemplateRuntimeFailed   = errors.New("sandbox: template runtime failed")
+	ErrPaginationStalled       = errors.New("sandbox: pagination token did not advance")
 )
 
 type TemplateRuntimeFailedError struct {

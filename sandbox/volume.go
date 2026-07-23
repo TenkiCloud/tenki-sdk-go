@@ -110,14 +110,26 @@ func (c *Client) ListVolumes(ctx context.Context, opts ...ListOption) ([]*Volume
 			opt.applyList(&cfg)
 		}
 	}
-	resp, err := c.sandbox.ListVolumes(ctx, connect.NewRequest(&sandboxv1.ListVolumesRequest{
-		WorkspaceId: cfg.workspaceID,
-		PageSize:    100,
-	}))
-	if err != nil {
-		return nil, mapError(err)
+	var volumes []*Volume
+	var pageToken string
+	for {
+		resp, err := c.sandbox.ListVolumes(ctx, connect.NewRequest(&sandboxv1.ListVolumesRequest{
+			WorkspaceId: cfg.workspaceID,
+			PageSize:    automaticPageSize,
+			PageToken:   pageToken,
+		}))
+		if err != nil {
+			return nil, mapError(err)
+		}
+		volumes = append(volumes, volumesFromProto(resp.Msg.Volumes)...)
+		pageToken, err = advancePageToken(pageToken, resp.Msg.NextPageToken)
+		if err != nil {
+			return nil, err
+		}
+		if pageToken == "" {
+			return volumes, nil
+		}
 	}
-	return volumesFromProto(resp.Msg.Volumes), nil
 }
 
 // DeleteVolume soft-deletes one persistent volume.

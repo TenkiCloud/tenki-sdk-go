@@ -107,29 +107,38 @@ func (c *Client) UnbindPreviewURL(ctx context.Context, previewURLID string) (*Pr
 }
 
 // ListPreviewURLs lists sticky preview URLs owned by the Workspace API key.
-func (c *Client) ListPreviewURLs(ctx context.Context, pageSize int32, pageToken string, opts ...PreviewURLOption) ([]*PreviewURL, string, error) {
+func (c *Client) ListPreviewURLs(ctx context.Context, opts ...PreviewURLOption) ([]*PreviewURL, error) {
 	cfg := previewURLConfig{}
 	for _, opt := range opts {
 		if opt != nil {
 			opt.applyPreviewURL(&cfg)
 		}
 	}
-	req := &sandboxv1.ListPreviewUrlsRequest{
-		PageSize:  pageSize,
-		PageToken: strings.TrimSpace(pageToken),
+	var items []*PreviewURL
+	var pageToken string
+	for {
+		req := &sandboxv1.ListPreviewUrlsRequest{
+			PageSize:  automaticPageSize,
+			PageToken: pageToken,
+		}
+		if cfg.workspaceID != "" {
+			req.WorkspaceId = &cfg.workspaceID
+		}
+		resp, err := c.sandbox.ListPreviewUrls(ctx, connect.NewRequest(req))
+		if err != nil {
+			return nil, mapError(err)
+		}
+		for _, item := range resp.Msg.PreviewUrls {
+			items = append(items, previewURLFromProto(item))
+		}
+		pageToken, err = advancePageToken(pageToken, resp.Msg.NextPageToken)
+		if err != nil {
+			return nil, err
+		}
+		if pageToken == "" {
+			return items, nil
+		}
 	}
-	if cfg.workspaceID != "" {
-		req.WorkspaceId = &cfg.workspaceID
-	}
-	resp, err := c.sandbox.ListPreviewUrls(ctx, connect.NewRequest(req))
-	if err != nil {
-		return nil, "", mapError(err)
-	}
-	items := make([]*PreviewURL, 0, len(resp.Msg.PreviewUrls))
-	for _, item := range resp.Msg.PreviewUrls {
-		items = append(items, previewURLFromProto(item))
-	}
-	return items, resp.Msg.NextPageToken, nil
 }
 
 func (c *Client) GetPreviewURL(ctx context.Context, previewURLID string) (*PreviewURL, error) {

@@ -308,16 +308,28 @@ func (c *Client) List(ctx context.Context, opts ...ListOption) ([]*Session, erro
 		}
 		opt.applyList(&cfg)
 	}
-	resp, err := c.sandbox.ListWorkspaceSandboxes(ctx, connect.NewRequest(&sandboxv1.ListWorkspaceSandboxesRequest{
-		WorkspaceId: cfg.workspaceID,
-		PageSize:    100,
-		Tags:        append([]string(nil), cfg.tags...),
-		Sticky:      cfg.sticky,
-	}))
-	if err != nil {
-		return nil, mapError(err)
+	var sessions []*Session
+	var pageToken string
+	for {
+		resp, err := c.sandbox.ListWorkspaceSandboxes(ctx, connect.NewRequest(&sandboxv1.ListWorkspaceSandboxesRequest{
+			WorkspaceId: cfg.workspaceID,
+			PageSize:    automaticPageSize,
+			PageToken:   pageToken,
+			Tags:        append([]string(nil), cfg.tags...),
+			Sticky:      cfg.sticky,
+		}))
+		if err != nil {
+			return nil, mapError(err)
+		}
+		sessions = append(sessions, sessionsFromProto(c, resp.Msg.Sessions)...)
+		pageToken, err = advancePageToken(pageToken, resp.Msg.NextPageToken)
+		if err != nil {
+			return nil, err
+		}
+		if pageToken == "" {
+			return sessions, nil
+		}
 	}
-	return sessionsFromProto(c, resp.Msg.Sessions), nil
 }
 
 func sessionsFromProto(client *Client, protoSessions []*sandboxv1.SandboxSession) []*Session {

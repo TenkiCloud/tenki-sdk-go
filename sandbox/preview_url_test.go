@@ -63,13 +63,25 @@ func TestPreviewURLRequestsInferWorkspaceAndOmitProject(t *testing.T) {
 		if req.Msg.GetWorkspaceId() != "" || req.Msg.GetProjectId() != "" {
 			t.Fatalf("unexpected scope: workspace=%q project=%q", req.Msg.GetWorkspaceId(), req.Msg.GetProjectId())
 		}
-		return connect.NewResponse(&sandboxv1.ListPreviewUrlsResponse{}), nil
+		if req.Msg.GetPageToken() == "next" {
+			return connect.NewResponse(&sandboxv1.ListPreviewUrlsResponse{
+				PreviewUrls: []*sandboxv1.PreviewUrl{{Id: "preview-2", WorkspaceId: workspaceID}},
+			}), nil
+		}
+		return connect.NewResponse(&sandboxv1.ListPreviewUrlsResponse{
+			PreviewUrls:   []*sandboxv1.PreviewUrl{{Id: "preview-1", WorkspaceId: workspaceID}},
+			NextPageToken: "next",
+		}), nil
 	}
 	client := newPreviewURLTestClient(t, handler)
 	if _, err := client.CreatePreviewURL(context.Background(), "demo", nil, nil); err != nil {
 		t.Fatalf("create workspace preview URL: %v", err)
 	}
-	if _, _, err := client.ListPreviewURLs(context.Background(), 50, ""); err != nil {
+	items, err := client.ListPreviewURLs(context.Background())
+	if err != nil {
 		t.Fatalf("list workspace preview URLs: %v", err)
+	}
+	if len(items) != 2 || items[0].ID != "preview-1" || items[1].ID != "preview-2" {
+		t.Fatalf("unexpected preview URLs: %#v", items)
 	}
 }

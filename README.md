@@ -172,7 +172,7 @@ Publish a stable, browser-openable URL bound to a session port:
 
 - `(*Client).CreatePreviewURL(ctx, slug string, sessionID *string, port *int32) (*PreviewURL, error)`
 - `(*Client).BindPreviewURL(ctx, previewURLID, sessionID string, port int32)` / `UnbindPreviewURL`
-- `(*Client).ListPreviewURLs(ctx, pageSize, pageToken)` / `GetPreviewURL` / `DeletePreviewURL`
+- `(*Client).ListPreviewURLs(ctx)` / `GetPreviewURL` / `DeletePreviewURL`
 
 ### Registry
 

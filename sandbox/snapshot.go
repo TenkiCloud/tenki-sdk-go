@@ -196,37 +196,73 @@ func (c *Client) ListSnapshots(ctx context.Context, opts ...ListOption) ([]*Snap
 			opt.applyList(&cfg)
 		}
 	}
-	resp, err := c.sandbox.ListWorkspaceSnapshots(ctx, connect.NewRequest(&sandboxv1.ListWorkspaceSnapshotsRequest{
-		WorkspaceId: cfg.workspaceID,
-		PageSize:    100,
-	}))
-	if err != nil {
-		return nil, mapError(err)
+	var snapshots []*Snapshot
+	var pageToken string
+	for {
+		resp, err := c.sandbox.ListWorkspaceSnapshots(ctx, connect.NewRequest(&sandboxv1.ListWorkspaceSnapshotsRequest{
+			WorkspaceId: cfg.workspaceID,
+			PageSize:    automaticPageSize,
+			PageToken:   pageToken,
+		}))
+		if err != nil {
+			return nil, mapError(err)
+		}
+		snapshots = append(snapshots, snapshotsFromProto(resp.Msg.Snapshots)...)
+		pageToken, err = advancePageToken(pageToken, resp.Msg.NextPageToken)
+		if err != nil {
+			return nil, err
+		}
+		if pageToken == "" {
+			return snapshots, nil
+		}
 	}
-	return snapshotsFromProto(resp.Msg.Snapshots), nil
 }
 
 // ListSessionSnapshots lists snapshots created from one session.
 func (c *Client) ListSessionSnapshots(ctx context.Context, sessionID string) ([]*Snapshot, error) {
-	resp, err := c.sandbox.ListSessionSnapshots(ctx, connect.NewRequest(&sandboxv1.ListSessionSnapshotsRequest{
-		SessionId: strings.TrimSpace(sessionID),
-		PageSize:  100,
-	}))
-	if err != nil {
-		return nil, mapError(err)
+	var snapshots []*Snapshot
+	var pageToken string
+	for {
+		resp, err := c.sandbox.ListSessionSnapshots(ctx, connect.NewRequest(&sandboxv1.ListSessionSnapshotsRequest{
+			SessionId: strings.TrimSpace(sessionID),
+			PageSize:  automaticPageSize,
+			PageToken: pageToken,
+		}))
+		if err != nil {
+			return nil, mapError(err)
+		}
+		snapshots = append(snapshots, snapshotsFromProto(resp.Msg.Snapshots)...)
+		pageToken, err = advancePageToken(pageToken, resp.Msg.NextPageToken)
+		if err != nil {
+			return nil, err
+		}
+		if pageToken == "" {
+			return snapshots, nil
+		}
 	}
-	return snapshotsFromProto(resp.Msg.Snapshots), nil
 }
 
 // ListDanglingSnapshots lists snapshots whose source session is gone or terminating.
 func (c *Client) ListDanglingSnapshots(ctx context.Context) ([]*Snapshot, error) {
-	resp, err := c.sandbox.ListDanglingSnapshots(ctx, connect.NewRequest(&sandboxv1.ListDanglingSnapshotsRequest{
-		PageSize: 100,
-	}))
-	if err != nil {
-		return nil, mapError(err)
+	var snapshots []*Snapshot
+	var pageToken string
+	for {
+		resp, err := c.sandbox.ListDanglingSnapshots(ctx, connect.NewRequest(&sandboxv1.ListDanglingSnapshotsRequest{
+			PageSize:  automaticPageSize,
+			PageToken: pageToken,
+		}))
+		if err != nil {
+			return nil, mapError(err)
+		}
+		snapshots = append(snapshots, snapshotsFromProto(resp.Msg.Snapshots)...)
+		pageToken, err = advancePageToken(pageToken, resp.Msg.NextPageToken)
+		if err != nil {
+			return nil, err
+		}
+		if pageToken == "" {
+			return snapshots, nil
+		}
 	}
-	return snapshotsFromProto(resp.Msg.Snapshots), nil
 }
 
 // DeleteSnapshot deletes one snapshot.

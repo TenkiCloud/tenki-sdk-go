@@ -53,10 +53,16 @@ func TestList(t *testing.T) {
 		if req.Msg.GetWorkspaceId() != "" {
 			t.Fatalf("unexpected workspace_id: %q", req.Msg.GetWorkspaceId())
 		}
+		if req.Msg.GetPageToken() == "next" {
+			return connect.NewResponse(&sandboxv1.ListWorkspaceSandboxesResponse{
+				Sessions: []*sandboxv1.SandboxSession{{Id: "sess-002", WorkspaceId: "ws-001"}},
+			}), nil
+		}
 		return connect.NewResponse(&sandboxv1.ListWorkspaceSandboxesResponse{
 			Sessions: []*sandboxv1.SandboxSession{
 				{Id: "sess-001", WorkspaceId: "ws-001"},
 			},
+			NextPageToken: "next",
 		}), nil
 	}
 
@@ -65,7 +71,7 @@ func TestList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	if len(sessions) != 1 || sessions[0].ID != "sess-001" || sessions[0].WorkspaceID != "ws-001" {
+	if len(sessions) != 2 || sessions[0].ID != "sess-001" || sessions[1].ID != "sess-002" {
 		t.Fatalf("unexpected sessions: %#v", sessions)
 	}
 }
