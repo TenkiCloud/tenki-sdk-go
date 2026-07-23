@@ -65,7 +65,7 @@ type Session struct {
 	State                     SessionState
 	OwnerType                 string
 	OwnerID                   string
-	ProjectID                 string
+	WorkspaceID               string
 	InboundEnabled            bool
 	OutboundEnabled           bool
 	CPUCores                  int32
@@ -132,7 +132,7 @@ func (s *Session) apply(protoSession *sandboxv1.SandboxSession) {
 	s.State = sessionStateFromProto(protoSession.State)
 	s.OwnerType = protoSession.OwnerType
 	s.OwnerID = protoSession.OwnerId
-	s.ProjectID = protoSession.ProjectId
+	s.WorkspaceID = protoSession.WorkspaceId
 	s.InboundEnabled = protoSession.InboundEnabled
 	s.OutboundEnabled = protoSession.OutboundEnabled
 	s.CPUCores = protoSession.CpuCores

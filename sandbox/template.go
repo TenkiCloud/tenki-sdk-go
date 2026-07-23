@@ -144,7 +144,6 @@ func (e *TemplateBuildFailedError) Unwrap() error { return ErrTemplateBuildFaile
 type Template struct {
 	ID                string
 	WorkspaceID       string
-	ProjectID         string
 	OwnerType         string
 	OwnerID           string
 	Name              string
@@ -189,17 +188,15 @@ func (c *Client) CreateTemplate(ctx context.Context, opts ...TemplateOption) (*T
 			return nil, err
 		}
 	}
-
 	req := &sandboxv1.CreateTemplateRequest{
-		WorkspaceId: cfg.workspaceID,
 		Name:        cfg.name,
 		BaseImageId: cfg.baseImageID,
 		SetupScript: cfg.setupScript,
 		EnvVars:     cloneStringMap(cfg.env),
 		Tags:        append([]string(nil), cfg.tags...),
 	}
-	if pID := strings.TrimSpace(cfg.projectID); pID != "" {
-		req.ProjectId = &pID
+	if workspaceID := strings.TrimSpace(cfg.workspaceID); workspaceID != "" {
+		req.WorkspaceId = workspaceID
 	}
 	if parentTemplateID := strings.TrimSpace(cfg.parentTemplateID); parentTemplateID != "" {
 		req.ParentTemplateId = &parentTemplateID
@@ -374,8 +371,8 @@ func (c *Client) GetTemplate(ctx context.Context, template any) (*Template, erro
 	return templateFromProto(resp.Msg.Template), nil
 }
 
-// ListTemplates lists templates for one workspace.
-func (c *Client) ListTemplates(ctx context.Context, workspaceID string, opts ...ListOption) ([]*Template, error) {
+// ListTemplates lists templates owned by the Workspace API key.
+func (c *Client) ListTemplates(ctx context.Context, opts ...ListOption) ([]*Template, error) {
 	cfg := defaultListConfig()
 	for _, opt := range opts {
 		if opt == nil {
@@ -384,29 +381,9 @@ func (c *Client) ListTemplates(ctx context.Context, workspaceID string, opts ...
 		opt.applyList(&cfg)
 	}
 	resp, err := c.sandbox.ListTemplates(ctx, connect.NewRequest(&sandboxv1.ListTemplatesRequest{
-		WorkspaceId: strings.TrimSpace(workspaceID),
+		WorkspaceId: cfg.workspaceID,
 		PageSize:    100,
 		Tags:        append([]string(nil), cfg.tags...),
-	}))
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return templatesFromProto(resp.Msg.Templates), nil
-}
-
-// ListProjectTemplates lists templates for one project.
-func (c *Client) ListProjectTemplates(ctx context.Context, projectID string, opts ...ListOption) ([]*Template, error) {
-	cfg := defaultListConfig()
-	for _, opt := range opts {
-		if opt == nil {
-			continue
-		}
-		opt.applyList(&cfg)
-	}
-	resp, err := c.sandbox.ListProjectTemplates(ctx, connect.NewRequest(&sandboxv1.ListProjectTemplatesRequest{
-		ProjectId: strings.TrimSpace(projectID),
-		PageSize:  100,
-		Tags:      append([]string(nil), cfg.tags...),
 	}))
 	if err != nil {
 		return nil, mapError(err)
@@ -569,7 +546,6 @@ func templateFromProto(protoTemplate *sandboxv1.Template) *Template {
 	template := &Template{
 		ID:          protoTemplate.Id,
 		WorkspaceID: protoTemplate.WorkspaceId,
-		ProjectID:   protoTemplate.ProjectId,
 		OwnerType:   protoTemplate.OwnerType,
 		OwnerID:     protoTemplate.OwnerId,
 		Name:        protoTemplate.Name,

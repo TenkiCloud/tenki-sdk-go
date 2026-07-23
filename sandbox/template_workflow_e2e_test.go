@@ -121,7 +121,6 @@ func verifyTemplateSession(
 	client *sandbox.Client,
 	build *sandbox.TemplateBuild,
 	workspaceID string,
-	projectID string,
 	label string,
 	expectedMode string,
 ) *sandbox.Session {
@@ -129,7 +128,6 @@ func verifyTemplateSession(
 	session, err := client.Create(
 		ctx,
 		sandbox.WithWorkspaceID(workspaceID),
-		sandbox.WithProjectID(projectID),
 		sandbox.WithImage(build.Image),
 		sandbox.WithEnvs(map[string]string{
 			"SDK_E2E_RUNTIME": label + "-create",
@@ -179,7 +177,6 @@ func TestTemplateWorkflowFilesystemMemoryAndForcedFallback(t *testing.T) {
 		t.Skip("set SANDBOX_E2E=1 to run sandbox SDK E2E tests")
 	}
 	workspaceID := requiredEnv(t, "TENKI_SANDBOX_WORKSPACE_ID")
-	projectID := requiredEnv(t, "TENKI_SANDBOX_PROJECT_ID")
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()
 	client, err := sandbox.New(sandbox.WithCookieName(envOr("TENKI_COOKIE_NAME", "tenki_session")))
@@ -216,7 +213,6 @@ func TestTemplateWorkflowFilesystemMemoryAndForcedFallback(t *testing.T) {
 		template, err := client.CreateTemplate(
 			ctx,
 			sandbox.WithWorkspaceID(workspaceID),
-			sandbox.WithProjectID(projectID),
 			sandbox.WithTemplateName(label),
 			sandbox.WithTemplateSpec(spec),
 			sandbox.WithTags("sdk-e2e", "go"),
@@ -259,7 +255,6 @@ func TestTemplateWorkflowFilesystemMemoryAndForcedFallback(t *testing.T) {
 			client,
 			build,
 			workspaceID,
-			projectID,
 			label,
 			expectedMode,
 		)
@@ -279,7 +274,6 @@ func TestTemplateWorkflowFilesystemMemoryAndForcedFallback(t *testing.T) {
 					client,
 					build,
 					workspaceID,
-					projectID,
 					label,
 					"cold_boot",
 				)

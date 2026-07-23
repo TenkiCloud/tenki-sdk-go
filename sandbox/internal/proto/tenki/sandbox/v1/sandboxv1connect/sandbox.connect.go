@@ -316,6 +316,7 @@ type SandboxServiceClient interface {
 	GetSession(context.Context, *connect.Request[v1.GetSessionRequest]) (*connect.Response[v1.GetSessionResponse], error)
 	WaitSession(context.Context, *connect.Request[v1.WaitSessionRequest]) (*connect.ServerStreamForClient[v1.WaitSessionResponse], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
+	// Deprecated: do not use.
 	ListWorkspaceSandboxes(context.Context, *connect.Request[v1.ListWorkspaceSandboxesRequest]) (*connect.Response[v1.ListWorkspaceSandboxesResponse], error)
 	// Deprecated: do not use.
 	ListProjectSandboxes(context.Context, *connect.Request[v1.ListProjectSandboxesRequest]) (*connect.Response[v1.ListProjectSandboxesResponse], error)
@@ -362,6 +363,7 @@ type SandboxServiceClient interface {
 	ListSnapshots(context.Context, *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ListSnapshotsResponse], error)
 	ListSessionSnapshots(context.Context, *connect.Request[v1.ListSessionSnapshotsRequest]) (*connect.Response[v1.ListSessionSnapshotsResponse], error)
 	ListDanglingSnapshots(context.Context, *connect.Request[v1.ListDanglingSnapshotsRequest]) (*connect.Response[v1.ListDanglingSnapshotsResponse], error)
+	// Deprecated: do not use.
 	ListWorkspaceSnapshots(context.Context, *connect.Request[v1.ListWorkspaceSnapshotsRequest]) (*connect.Response[v1.ListWorkspaceSnapshotsResponse], error)
 	// Deprecated: do not use.
 	ListProjectSnapshots(context.Context, *connect.Request[v1.ListProjectSnapshotsRequest]) (*connect.Response[v1.ListProjectSnapshotsResponse], error)
@@ -990,6 +992,8 @@ func (c *sandboxServiceClient) ListSessions(ctx context.Context, req *connect.Re
 }
 
 // ListWorkspaceSandboxes calls tenki.sandbox.v1.SandboxService.ListWorkspaceSandboxes.
+//
+// Deprecated: do not use.
 func (c *sandboxServiceClient) ListWorkspaceSandboxes(ctx context.Context, req *connect.Request[v1.ListWorkspaceSandboxesRequest]) (*connect.Response[v1.ListWorkspaceSandboxesResponse], error) {
 	return c.listWorkspaceSandboxes.CallUnary(ctx, req)
 }
@@ -1208,6 +1212,8 @@ func (c *sandboxServiceClient) ListDanglingSnapshots(ctx context.Context, req *c
 }
 
 // ListWorkspaceSnapshots calls tenki.sandbox.v1.SandboxService.ListWorkspaceSnapshots.
+//
+// Deprecated: do not use.
 func (c *sandboxServiceClient) ListWorkspaceSnapshots(ctx context.Context, req *connect.Request[v1.ListWorkspaceSnapshotsRequest]) (*connect.Response[v1.ListWorkspaceSnapshotsResponse], error) {
 	return c.listWorkspaceSnapshots.CallUnary(ctx, req)
 }
@@ -1380,6 +1386,7 @@ type SandboxServiceHandler interface {
 	GetSession(context.Context, *connect.Request[v1.GetSessionRequest]) (*connect.Response[v1.GetSessionResponse], error)
 	WaitSession(context.Context, *connect.Request[v1.WaitSessionRequest], *connect.ServerStream[v1.WaitSessionResponse]) error
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
+	// Deprecated: do not use.
 	ListWorkspaceSandboxes(context.Context, *connect.Request[v1.ListWorkspaceSandboxesRequest]) (*connect.Response[v1.ListWorkspaceSandboxesResponse], error)
 	// Deprecated: do not use.
 	ListProjectSandboxes(context.Context, *connect.Request[v1.ListProjectSandboxesRequest]) (*connect.Response[v1.ListProjectSandboxesResponse], error)
@@ -1426,6 +1433,7 @@ type SandboxServiceHandler interface {
 	ListSnapshots(context.Context, *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ListSnapshotsResponse], error)
 	ListSessionSnapshots(context.Context, *connect.Request[v1.ListSessionSnapshotsRequest]) (*connect.Response[v1.ListSessionSnapshotsResponse], error)
 	ListDanglingSnapshots(context.Context, *connect.Request[v1.ListDanglingSnapshotsRequest]) (*connect.Response[v1.ListDanglingSnapshotsResponse], error)
+	// Deprecated: do not use.
 	ListWorkspaceSnapshots(context.Context, *connect.Request[v1.ListWorkspaceSnapshotsRequest]) (*connect.Response[v1.ListWorkspaceSnapshotsResponse], error)
 	// Deprecated: do not use.
 	ListProjectSnapshots(context.Context, *connect.Request[v1.ListProjectSnapshotsRequest]) (*connect.Response[v1.ListProjectSnapshotsResponse], error)

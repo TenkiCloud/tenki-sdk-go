@@ -88,6 +88,7 @@ func TestCreateSendsOutboundPolicyPresence(t *testing.T) {
 			defer server.Close()
 
 			opts := append([]CreateOption{WithWaitReady(false)}, tt.opts...)
+			opts = append(opts, WithWorkspaceID("ws-1"))
 			_, err := client.Create(context.Background(), opts...)
 			if err != nil {
 				t.Fatalf("Create: %v", err)
@@ -124,6 +125,7 @@ func TestCreateSendsInboundPolicyPresence(t *testing.T) {
 			defer server.Close()
 
 			opts := append([]CreateOption{WithWaitReady(false)}, tt.opts...)
+			opts = append(opts, WithWorkspaceID("ws-1"))
 			_, err := client.Create(context.Background(), opts...)
 			if err != nil {
 				t.Fatalf("Create: %v", err)
@@ -145,7 +147,7 @@ func TestCreateReturnsTypedTemplateRuntimeFailure(t *testing.T) {
 	server, client := newWaitSessionTestServer(t, handler)
 	defer server.Close()
 
-	_, err := client.Create(context.Background(), WithWaitForRuntime(true), WithWaitTimeout(time.Second))
+	_, err := client.Create(context.Background(), WithWorkspaceID("ws-1"), WithWaitForRuntime(true), WithWaitTimeout(time.Second))
 	if !errors.Is(err, ErrTemplateRuntimeFailed) {
 		t.Fatalf("Create error = %v, want ErrTemplateRuntimeFailed", err)
 	}
@@ -173,6 +175,7 @@ func TestCreateCanWaitForTemplateRuntime(t *testing.T) {
 
 	session, err := client.Create(
 		context.Background(),
+		WithWorkspaceID("ws-1"),
 		WithName("runtime"),
 		WithWaitReady(false),
 		WithWaitForRuntime(true),
@@ -227,7 +230,7 @@ func TestCreateDefaultsToWaitReady(t *testing.T) {
 	server, client := newWaitSessionTestServer(t, handler)
 	defer server.Close()
 
-	session, err := client.Create(context.Background(), WithName("wait-stream"), WithWaitTimeout(time.Second))
+	session, err := client.Create(context.Background(), WithWorkspaceID("ws-1"), WithName("wait-stream"), WithWaitTimeout(time.Second))
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -246,7 +249,7 @@ func TestCreateWithWaitReadyFalseReturnsImmediately(t *testing.T) {
 	server, client := newWaitSessionTestServer(t, handler)
 	defer server.Close()
 
-	session, err := client.Create(context.Background(), WithName("wait-stream"), WithWaitReady(false))
+	session, err := client.Create(context.Background(), WithWorkspaceID("ws-1"), WithName("wait-stream"), WithWaitReady(false))
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -311,7 +314,7 @@ func TestCreateAndWaitUsesWaitSessionStream(t *testing.T) {
 	server, client := newWaitSessionTestServer(t, handler)
 	defer server.Close()
 
-	session, err := client.CreateAndWait(context.Background(), time.Second, WithName("wait-stream"))
+	session, err := client.CreateAndWait(context.Background(), time.Second, WithWorkspaceID("ws-1"), WithName("wait-stream"))
 	if err != nil {
 		t.Fatalf("CreateAndWait: %v", err)
 	}
@@ -336,7 +339,7 @@ func TestCreateAndWaitIncludesTerminalError(t *testing.T) {
 	server, client := newWaitSessionTestServer(t, handler)
 	defer server.Close()
 
-	_, err := client.CreateAndWait(context.Background(), time.Second, WithName("wait-stream"))
+	_, err := client.CreateAndWait(context.Background(), time.Second, WithWorkspaceID("ws-1"), WithName("wait-stream"))
 	if err == nil {
 		t.Fatal("CreateAndWait returned nil error")
 	}
@@ -366,7 +369,7 @@ func TestCreateAndWaitFallsBackToPollOnRetryableWaitStreamError(t *testing.T) {
 			server, client := newWaitSessionTestServer(t, handler)
 			defer server.Close()
 
-			session, err := client.CreateAndWait(context.Background(), time.Second, WithName("wait-stream"))
+			session, err := client.CreateAndWait(context.Background(), time.Second, WithWorkspaceID("ws-1"), WithName("wait-stream"))
 			if err != nil {
 				t.Fatalf("CreateAndWait: %v", err)
 			}

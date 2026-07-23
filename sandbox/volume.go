@@ -49,7 +49,6 @@ type VolumeAttachment struct {
 type Volume struct {
 	ID                string
 	WorkspaceID       string
-	ProjectID         string
 	Name              string
 	SizeBytes         int64
 	State             VolumeState
@@ -73,14 +72,12 @@ func (c *Client) CreateVolume(ctx context.Context, opts ...CreateVolumeOption) (
 		}
 		opt.applyCreateVolume(&cfg)
 	}
-
 	req := &sandboxv1.CreateVolumeRequest{
-		WorkspaceId: cfg.workspaceID,
-		Name:        cfg.name,
-		SizeBytes:   cfg.sizeBytes,
+		Name:      cfg.name,
+		SizeBytes: cfg.sizeBytes,
 	}
-	if pID := strings.TrimSpace(cfg.projectID); pID != "" {
-		req.ProjectId = &pID
+	if workspaceID := strings.TrimSpace(cfg.workspaceID); workspaceID != "" {
+		req.WorkspaceId = workspaceID
 	}
 
 	resp, err := c.sandbox.CreateVolume(ctx, connect.NewRequest(req))
@@ -105,23 +102,17 @@ func (c *Client) GetVolume(ctx context.Context, volumeID string) (*Volume, error
 	return vol, nil
 }
 
-// ListVolumes lists all persistent volumes in one workspace.
-func (c *Client) ListVolumes(ctx context.Context, workspaceID string) ([]*Volume, error) {
-	resp, err := c.sandbox.ListVolumes(ctx, connect.NewRequest(&sandboxv1.ListVolumesRequest{
-		WorkspaceId: workspaceID,
-		PageSize:    100,
-	}))
-	if err != nil {
-		return nil, mapError(err)
+// ListVolumes lists persistent volumes owned by the Workspace API key.
+func (c *Client) ListVolumes(ctx context.Context, opts ...ListOption) ([]*Volume, error) {
+	cfg := defaultListConfig()
+	for _, opt := range opts {
+		if opt != nil {
+			opt.applyList(&cfg)
+		}
 	}
-	return volumesFromProto(resp.Msg.Volumes), nil
-}
-
-// ListProjectVolumes lists all persistent volumes in one project.
-func (c *Client) ListProjectVolumes(ctx context.Context, projectID string) ([]*Volume, error) {
-	resp, err := c.sandbox.ListProjectVolumes(ctx, connect.NewRequest(&sandboxv1.ListProjectVolumesRequest{
-		ProjectId: strings.TrimSpace(projectID),
-		PageSize:  100,
+	resp, err := c.sandbox.ListVolumes(ctx, connect.NewRequest(&sandboxv1.ListVolumesRequest{
+		WorkspaceId: cfg.workspaceID,
+		PageSize:    100,
 	}))
 	if err != nil {
 		return nil, mapError(err)
@@ -204,7 +195,6 @@ func volumeFromProto(protoVolume *sandboxv1.Volume) *Volume {
 	return &Volume{
 		ID:          protoVolume.Id,
 		WorkspaceID: protoVolume.WorkspaceId,
-		ProjectID:   protoVolume.ProjectId,
 		Name:        protoVolume.Name,
 		SizeBytes:   protoVolume.SizeBytes,
 		State:       volumeStateFromProto(protoVolume.State),

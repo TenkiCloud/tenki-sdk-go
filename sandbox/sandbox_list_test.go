@@ -16,19 +16,11 @@ type sandboxListHandler struct {
 	sandboxv1connect.UnimplementedSandboxServiceHandler
 
 	listWorkspaceSandboxesFn func(*connect.Request[sandboxv1.ListWorkspaceSandboxesRequest]) (*connect.Response[sandboxv1.ListWorkspaceSandboxesResponse], error)
-	listProjectSandboxesFn   func(*connect.Request[sandboxv1.ListProjectSandboxesRequest]) (*connect.Response[sandboxv1.ListProjectSandboxesResponse], error)
 }
 
 func (h *sandboxListHandler) ListWorkspaceSandboxes(_ context.Context, req *connect.Request[sandboxv1.ListWorkspaceSandboxesRequest]) (*connect.Response[sandboxv1.ListWorkspaceSandboxesResponse], error) {
 	if h.listWorkspaceSandboxesFn != nil {
 		return h.listWorkspaceSandboxesFn(req)
-	}
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
-}
-
-func (h *sandboxListHandler) ListProjectSandboxes(_ context.Context, req *connect.Request[sandboxv1.ListProjectSandboxesRequest]) (*connect.Response[sandboxv1.ListProjectSandboxesResponse], error) {
-	if h.listProjectSandboxesFn != nil {
-		return h.listProjectSandboxesFn(req)
 	}
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
 }
@@ -53,7 +45,32 @@ func newSandboxListTestClient(t *testing.T, h *sandboxListHandler) *Client {
 	return client
 }
 
-func TestListWorkspaceSandboxes(t *testing.T) {
+func TestList(t *testing.T) {
+	t.Parallel()
+
+	h := &sandboxListHandler{}
+	h.listWorkspaceSandboxesFn = func(req *connect.Request[sandboxv1.ListWorkspaceSandboxesRequest]) (*connect.Response[sandboxv1.ListWorkspaceSandboxesResponse], error) {
+		if req.Msg.GetWorkspaceId() != "" {
+			t.Fatalf("unexpected workspace_id: %q", req.Msg.GetWorkspaceId())
+		}
+		return connect.NewResponse(&sandboxv1.ListWorkspaceSandboxesResponse{
+			Sessions: []*sandboxv1.SandboxSession{
+				{Id: "sess-001", WorkspaceId: "ws-001"},
+			},
+		}), nil
+	}
+
+	client := newSandboxListTestClient(t, h)
+	sessions, err := client.List(context.Background())
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(sessions) != 1 || sessions[0].ID != "sess-001" || sessions[0].WorkspaceID != "ws-001" {
+		t.Fatalf("unexpected sessions: %#v", sessions)
+	}
+}
+
+func TestListSupportsExplicitWorkspaceScopeForServiceCredentials(t *testing.T) {
 	t.Parallel()
 
 	h := &sandboxListHandler{}
@@ -61,44 +78,11 @@ func TestListWorkspaceSandboxes(t *testing.T) {
 		if req.Msg.GetWorkspaceId() != "ws-001" {
 			t.Fatalf("unexpected workspace_id: %q", req.Msg.GetWorkspaceId())
 		}
-		return connect.NewResponse(&sandboxv1.ListWorkspaceSandboxesResponse{
-			Sessions: []*sandboxv1.SandboxSession{
-				{Id: "sess-001", WorkspaceId: "ws-001", ProjectId: "proj-001"},
-			},
-		}), nil
+		return connect.NewResponse(&sandboxv1.ListWorkspaceSandboxesResponse{}), nil
 	}
 
 	client := newSandboxListTestClient(t, h)
-	sessions, err := client.ListWorkspaceSandboxes(context.Background(), "ws-001")
-	if err != nil {
-		t.Fatalf("ListWorkspaceSandboxes: %v", err)
-	}
-	if len(sessions) != 1 || sessions[0].ID != "sess-001" || sessions[0].ProjectID != "proj-001" {
-		t.Fatalf("unexpected sessions: %#v", sessions)
-	}
-}
-
-func TestListProjectSandboxes(t *testing.T) {
-	t.Parallel()
-
-	h := &sandboxListHandler{}
-	h.listProjectSandboxesFn = func(req *connect.Request[sandboxv1.ListProjectSandboxesRequest]) (*connect.Response[sandboxv1.ListProjectSandboxesResponse], error) {
-		if req.Msg.GetProjectId() != "proj-001" {
-			t.Fatalf("unexpected project_id: %q", req.Msg.GetProjectId())
-		}
-		return connect.NewResponse(&sandboxv1.ListProjectSandboxesResponse{
-			Sessions: []*sandboxv1.SandboxSession{
-				{Id: "sess-001", WorkspaceId: "ws-001", ProjectId: "proj-001"},
-			},
-		}), nil
-	}
-
-	client := newSandboxListTestClient(t, h)
-	sessions, err := client.ListProjectSandboxes(context.Background(), "proj-001")
-	if err != nil {
-		t.Fatalf("ListProjectSandboxes: %v", err)
-	}
-	if len(sessions) != 1 || sessions[0].ID != "sess-001" || sessions[0].ProjectID != "proj-001" {
-		t.Fatalf("unexpected sessions: %#v", sessions)
+	if _, err := client.List(context.Background(), WithWorkspaceID("ws-001")); err != nil {
+		t.Fatalf("List: %v", err)
 	}
 }

@@ -131,7 +131,12 @@ func TestCreateTemplateServerViolationsAreTyped(t *testing.T) {
 	}
 	client := newTemplateTestClient(t, handler)
 
-	_, err := client.CreateTemplate(context.Background(), WithTemplateName("x"), WithTemplateSpec(typedTestSpec()))
+	_, err := client.CreateTemplate(
+		context.Background(),
+		WithWorkspaceID("ws-1"),
+		WithTemplateName("x"),
+		WithTemplateSpec(typedTestSpec()),
+	)
 	var validationErr *TemplateSpecValidationError
 	if !errors.As(err, &validationErr) {
 		t.Fatalf("expected TemplateSpecValidationError, got %v", err)
@@ -324,9 +329,13 @@ func TestTemplateBuildExposesSpecHashAndImage(t *testing.T) {
 func TestCreateWithImageFromBuildUsesDigestRef(t *testing.T) {
 	digestRef := "acme/node-api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	var gotRef string
+	var gotWorkspaceID string
+	var gotProjectID string
 	handler := &templateHandler{
 		createSessionFn: func(req *connect.Request[sandboxv1.CreateSessionRequest]) (*connect.Response[sandboxv1.CreateSessionResponse], error) {
 			gotRef = req.Msg.GetRegistryRef()
+			gotWorkspaceID = req.Msg.GetWorkspaceId()
+			gotProjectID = req.Msg.GetProjectId()
 			return connect.NewResponse(&sandboxv1.CreateSessionResponse{Session: &sandboxv1.SandboxSession{
 				Id: "01900000-0000-7000-8000-0000000000dd", State: sandboxv1.SessionState_SESSION_STATE_RUNNING,
 			}}), nil
@@ -335,14 +344,17 @@ func TestCreateWithImageFromBuildUsesDigestRef(t *testing.T) {
 	client := newTemplateTestClient(t, handler)
 
 	image := &RegistryImage{Name: "node-api", WorkspaceSlug: "acme", DigestRef: digestRef}
-	if _, err := client.Create(context.Background(), WithImage(image), WithWaitReady(false)); err != nil {
+	if _, err := client.Create(context.Background(), WithWorkspaceID("ws-001"), WithImage(image), WithWaitReady(false)); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	if gotRef != digestRef {
 		t.Fatalf("registry ref = %q", gotRef)
 	}
+	if gotWorkspaceID != "ws-001" || gotProjectID != "" {
+		t.Fatalf("scope = workspace %q project %q", gotWorkspaceID, gotProjectID)
+	}
 
-	if _, err := client.Create(context.Background(), WithImage(&RegistryImage{Name: "node-api", WorkspaceSlug: "acme"}), WithWaitReady(false)); err != nil {
+	if _, err := client.Create(context.Background(), WithWorkspaceID("ws-001"), WithImage(&RegistryImage{Name: "node-api", WorkspaceSlug: "acme"}), WithWaitReady(false)); err != nil {
 		t.Fatalf("Create fallback: %v", err)
 	}
 	if gotRef != "acme/node-api" {

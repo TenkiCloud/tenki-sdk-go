@@ -4532,9 +4532,9 @@ const file_tenki_sandbox_v1_template_proto_rawDesc = "" +
 	"_start_cmdB\x16\n" +
 	"\x14_parent_workspace_idB\f\n" +
 	"\n" +
-	"_spec_hash\"\xbf\b\n" +
-	"\x15CreateTemplateRequest\x12+\n" +
-	"\fworkspace_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\vworkspaceId\x12\x1d\n" +
+	"_spec_hash\"\xc2\b\n" +
+	"\x15CreateTemplateRequest\x12.\n" +
+	"\fworkspace_id\x18\x01 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\xb0\x01\x01R\vworkspaceId\x12\x1d\n" +
 	"\x04name\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x04name\x12\"\n" +
 	"\rbase_image_id\x18\x03 \x01(\tR\vbaseImageId\x12!\n" +
 	"\fsetup_script\x18\x04 \x01(\tR\vsetupScript\x12 \n" +
@@ -4564,9 +4564,9 @@ const file_tenki_sandbox_v1_template_proto_rawDesc = "" +
 	"\vtemplate_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\n" +
 	"templateId\"M\n" +
 	"\x13GetTemplateResponse\x126\n" +
-	"\btemplate\x18\x01 \x01(\v2\x1a.tenki.sandbox.v1.TemplateR\btemplate\"\x9e\x01\n" +
-	"\x14ListTemplatesRequest\x12+\n" +
-	"\fworkspace_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\vworkspaceId\x12&\n" +
+	"\btemplate\x18\x01 \x01(\v2\x1a.tenki.sandbox.v1.TemplateR\btemplate\"\xa1\x01\n" +
+	"\x14ListTemplatesRequest\x12.\n" +
+	"\fworkspace_id\x18\x01 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\xb0\x01\x01R\vworkspaceId\x12&\n" +
 	"\tpage_size\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R\bpageSize\x12\x1d\n" +
 	"\n" +
 	"page_token\x18\x03 \x01(\tR\tpageToken\x12\x12\n" +

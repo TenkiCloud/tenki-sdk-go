@@ -179,7 +179,6 @@ type createConfig struct {
 	setupEnv       map[string]string
 	setupSecrets   map[string]string
 	workspaceID    string
-	projectID      string
 	metadata       map[string]string
 	tags           []string
 	env            map[string]string
@@ -196,16 +195,12 @@ type createConfig struct {
 
 type createVolumeConfig struct {
 	workspaceID string
-	projectID   string
 	name        string
 	sizeBytes   int64
 }
 
 type templateConfig struct {
 	workspaceID      string
-	workspaceIDSet   bool
-	projectID        string
-	projectIDSet     bool
 	name             string
 	nameSet          bool
 	baseImageID      string
@@ -226,8 +221,13 @@ type templateConfig struct {
 }
 
 type listConfig struct {
-	tags   []string
-	sticky *bool
+	workspaceID string
+	tags        []string
+	sticky      *bool
+}
+
+type previewURLConfig struct {
+	workspaceID string
 }
 
 type volumeConfig struct {
@@ -553,6 +553,11 @@ func (f listOptionFunc) applyList(cfg *listConfig) {
 	f(cfg)
 }
 
+// PreviewURLOption configures preview URL create and list behavior.
+type PreviewURLOption interface {
+	applyPreviewURL(*previewURLConfig)
+}
+
 // UpdateSessionOption configures Session.Update behavior.
 type UpdateSessionOption interface {
 	applyUpdateSession(*updateSessionConfig)
@@ -600,7 +605,14 @@ func (o workspaceIDOption) applyCreateVolume(cfg *createVolumeConfig) {
 
 func (o workspaceIDOption) applyTemplate(cfg *templateConfig) {
 	cfg.workspaceID = o.workspaceID
-	cfg.workspaceIDSet = true
+}
+
+func (o workspaceIDOption) applyList(cfg *listConfig) {
+	cfg.workspaceID = o.workspaceID
+}
+
+func (o workspaceIDOption) applyPreviewURL(cfg *previewURLConfig) {
+	cfg.workspaceID = o.workspaceID
 }
 
 // WithVolumeName sets the volume name for CreateVolume.
@@ -617,39 +629,16 @@ func WithVolumeSize(sizeBytes int64) CreateVolumeOption {
 	})
 }
 
-// WithWorkspaceID scopes Create/CreateVolume/ListVolumes to one workspace.
+// WithWorkspaceID explicitly scopes requests for trusted service credentials.
+// Workspace API keys infer their scope automatically.
 func WithWorkspaceID(workspaceID string) interface {
 	CreateOption
 	CreateVolumeOption
 	TemplateOption
+	ListOption
+	PreviewURLOption
 } {
 	return workspaceIDOption{workspaceID: strings.TrimSpace(workspaceID)}
-}
-
-type projectIDOption struct {
-	projectID string
-}
-
-func (o projectIDOption) applyCreate(cfg *createConfig) {
-	cfg.projectID = o.projectID
-}
-
-func (o projectIDOption) applyCreateVolume(cfg *createVolumeConfig) {
-	cfg.projectID = o.projectID
-}
-
-func (o projectIDOption) applyTemplate(cfg *templateConfig) {
-	cfg.projectID = o.projectID
-	cfg.projectIDSet = true
-}
-
-// WithProjectID scopes Create/CreateVolume/CreateTemplate to one project.
-func WithProjectID(projectID string) interface {
-	CreateOption
-	CreateVolumeOption
-	TemplateOption
-} {
-	return projectIDOption{projectID: strings.TrimSpace(projectID)}
 }
 
 // VolumeOption configures per-volume attachment behavior.

@@ -46,7 +46,6 @@ type Snapshot struct {
 	ID              string
 	SessionID       string
 	WorkspaceID     string
-	ProjectID       string
 	Name            string
 	State           SnapshotState
 	SizeBytes       int64
@@ -189,10 +188,17 @@ func (c *Client) WaitForSnapshotDurable(ctx context.Context, snapshotID string) 
 	}
 }
 
-// ListSnapshots lists snapshots scoped to the caller.
-func (c *Client) ListSnapshots(ctx context.Context) ([]*Snapshot, error) {
-	resp, err := c.sandbox.ListSnapshots(ctx, connect.NewRequest(&sandboxv1.ListSnapshotsRequest{
-		PageSize: 100,
+// ListSnapshots lists snapshots owned by the Workspace API key.
+func (c *Client) ListSnapshots(ctx context.Context, opts ...ListOption) ([]*Snapshot, error) {
+	cfg := defaultListConfig()
+	for _, opt := range opts {
+		if opt != nil {
+			opt.applyList(&cfg)
+		}
+	}
+	resp, err := c.sandbox.ListWorkspaceSnapshots(ctx, connect.NewRequest(&sandboxv1.ListWorkspaceSnapshotsRequest{
+		WorkspaceId: cfg.workspaceID,
+		PageSize:    100,
 	}))
 	if err != nil {
 		return nil, mapError(err)
@@ -216,30 +222,6 @@ func (c *Client) ListSessionSnapshots(ctx context.Context, sessionID string) ([]
 func (c *Client) ListDanglingSnapshots(ctx context.Context) ([]*Snapshot, error) {
 	resp, err := c.sandbox.ListDanglingSnapshots(ctx, connect.NewRequest(&sandboxv1.ListDanglingSnapshotsRequest{
 		PageSize: 100,
-	}))
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return snapshotsFromProto(resp.Msg.Snapshots), nil
-}
-
-// ListWorkspaceSnapshots lists snapshots for one workspace.
-func (c *Client) ListWorkspaceSnapshots(ctx context.Context, workspaceID string) ([]*Snapshot, error) {
-	resp, err := c.sandbox.ListWorkspaceSnapshots(ctx, connect.NewRequest(&sandboxv1.ListWorkspaceSnapshotsRequest{
-		WorkspaceId: strings.TrimSpace(workspaceID),
-		PageSize:    100,
-	}))
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return snapshotsFromProto(resp.Msg.Snapshots), nil
-}
-
-// ListProjectSnapshots lists snapshots for one project.
-func (c *Client) ListProjectSnapshots(ctx context.Context, projectID string) ([]*Snapshot, error) {
-	resp, err := c.sandbox.ListProjectSnapshots(ctx, connect.NewRequest(&sandboxv1.ListProjectSnapshotsRequest{
-		ProjectId: strings.TrimSpace(projectID),
-		PageSize:  100,
 	}))
 	if err != nil {
 		return nil, mapError(err)
@@ -318,7 +300,6 @@ func snapshotFromProto(protoSnapshot *sandboxv1.Snapshot) *Snapshot {
 	if protoSnapshot.WorkspaceId != nil {
 		snapshot.WorkspaceID = *protoSnapshot.WorkspaceId
 	}
-	snapshot.ProjectID = protoSnapshot.ProjectId
 	if protoSnapshot.Name != nil {
 		snapshot.Name = *protoSnapshot.Name
 	}

@@ -16,13 +16,6 @@ type Identity struct {
 
 // IdentityWorkspace is a workspace returned by WhoAmI.
 type IdentityWorkspace struct {
-	ID       string
-	Name     string
-	Projects []IdentityProject
-}
-
-// IdentityProject is a project returned by WhoAmI.
-type IdentityProject struct {
 	ID   string
 	Name string
 }
@@ -41,12 +34,6 @@ func (c *Client) WhoAmI(ctx context.Context) (*Identity, error) {
 		iws := IdentityWorkspace{
 			ID:   ws.WorkspaceId,
 			Name: ws.Name,
-		}
-		for _, p := range ws.Projects {
-			iws.Projects = append(iws.Projects, IdentityProject{
-				ID:   p.ProjectId,
-				Name: p.Name,
-			})
 		}
 		id.Workspaces = append(id.Workspaces, iws)
 	}

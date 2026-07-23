@@ -171,7 +171,6 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 	if sourceCount > 1 {
 		return nil, errors.New("sandbox: only one of image, snapshot, or template spec may be set")
 	}
-
 	req := &sandboxv1.CreateSessionRequest{
 		OwnerType:         defaultCreateOwnerType,
 		OwnerId:           defaultCreateOwnerID,
@@ -238,11 +237,8 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 	} else if cfg.templateSpecID != "" {
 		req.TemplateSpecId = &cfg.templateSpecID
 	}
-	if wsID := strings.TrimSpace(cfg.workspaceID); wsID != "" {
-		req.WorkspaceId = &wsID
-	}
-	if pID := strings.TrimSpace(cfg.projectID); pID != "" {
-		req.ProjectId = &pID
+	if workspaceID := strings.TrimSpace(cfg.workspaceID); workspaceID != "" {
+		req.WorkspaceId = &workspaceID
 	}
 
 	if !cfg.waitReady && !cfg.waitForRuntime {
@@ -303,7 +299,7 @@ func mapCreateSessionError(client *Client, err error) error {
 	return mapError(err)
 }
 
-// List lists sessions scoped to client owner.
+// List lists sessions owned by the Workspace API key.
 func (c *Client) List(ctx context.Context, opts ...ListOption) ([]*Session, error) {
 	cfg := defaultListConfig()
 	for _, opt := range opts {
@@ -312,54 +308,11 @@ func (c *Client) List(ctx context.Context, opts ...ListOption) ([]*Session, erro
 		}
 		opt.applyList(&cfg)
 	}
-	req := &sandboxv1.ListSessionsRequest{
-		PageSize: 100,
-		Tags:     append([]string(nil), cfg.tags...),
-		Sticky:   cfg.sticky,
-	}
-
-	resp, err := c.sandbox.ListSessions(ctx, connect.NewRequest(req))
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return sessionsFromProto(c, resp.Msg.Sessions), nil
-}
-
-// ListWorkspaceSandboxes lists sessions for one workspace.
-func (c *Client) ListWorkspaceSandboxes(ctx context.Context, workspaceID string, opts ...ListOption) ([]*Session, error) {
-	cfg := defaultListConfig()
-	for _, opt := range opts {
-		if opt == nil {
-			continue
-		}
-		opt.applyList(&cfg)
-	}
 	resp, err := c.sandbox.ListWorkspaceSandboxes(ctx, connect.NewRequest(&sandboxv1.ListWorkspaceSandboxesRequest{
-		WorkspaceId: strings.TrimSpace(workspaceID),
+		WorkspaceId: cfg.workspaceID,
 		PageSize:    100,
 		Tags:        append([]string(nil), cfg.tags...),
 		Sticky:      cfg.sticky,
-	}))
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return sessionsFromProto(c, resp.Msg.Sessions), nil
-}
-
-// ListProjectSandboxes lists sessions for one project.
-func (c *Client) ListProjectSandboxes(ctx context.Context, projectID string, opts ...ListOption) ([]*Session, error) {
-	cfg := defaultListConfig()
-	for _, opt := range opts {
-		if opt == nil {
-			continue
-		}
-		opt.applyList(&cfg)
-	}
-	resp, err := c.sandbox.ListProjectSandboxes(ctx, connect.NewRequest(&sandboxv1.ListProjectSandboxesRequest{
-		ProjectId: strings.TrimSpace(projectID),
-		PageSize:  100,
-		Tags:      append([]string(nil), cfg.tags...),
-		Sticky:    cfg.sticky,
 	}))
 	if err != nil {
 		return nil, mapError(err)
@@ -512,7 +465,7 @@ func setClientAuthHeaders(headerSetter interface {
 	Set(string, string)
 }, authToken, cookieName string) {
 	headerSetter.Set(headerClientFamily, "go_sdk")
-	headerSetter.Set(headerClientGeneration, "project_v1")
+	headerSetter.Set(headerClientGeneration, "workspace_v1")
 	token := strings.TrimSpace(authToken)
 	if token == "" {
 		return

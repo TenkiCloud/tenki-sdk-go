@@ -18,15 +18,14 @@ type volumeHandler struct {
 	sandboxv1connect.UnimplementedSandboxServiceHandler
 	t *testing.T
 
-	createVolumeFn       func(*connect.Request[sandboxv1.CreateVolumeRequest]) (*connect.Response[sandboxv1.CreateVolumeResponse], error)
-	getSessionFn         func(*connect.Request[sandboxv1.GetSessionRequest]) (*connect.Response[sandboxv1.GetSessionResponse], error)
-	getVolumeFn          func(*connect.Request[sandboxv1.GetVolumeRequest]) (*connect.Response[sandboxv1.GetVolumeResponse], error)
-	listVolumesFn        func(*connect.Request[sandboxv1.ListVolumesRequest]) (*connect.Response[sandboxv1.ListVolumesResponse], error)
-	listProjectVolumesFn func(*connect.Request[sandboxv1.ListProjectVolumesRequest]) (*connect.Response[sandboxv1.ListProjectVolumesResponse], error)
-	deleteVolumeFn       func(*connect.Request[sandboxv1.DeleteVolumeRequest]) (*connect.Response[sandboxv1.DeleteVolumeResponse], error)
-	resizeVolumeFn       func(*connect.Request[sandboxv1.ResizeVolumeRequest]) (*connect.Response[sandboxv1.ResizeVolumeResponse], error)
-	attachVolumeFn       func(*connect.Request[sandboxv1.AttachVolumeRequest]) (*connect.Response[sandboxv1.AttachVolumeResponse], error)
-	detachVolumeFn       func(*connect.Request[sandboxv1.DetachVolumeRequest]) (*connect.Response[sandboxv1.DetachVolumeResponse], error)
+	createVolumeFn func(*connect.Request[sandboxv1.CreateVolumeRequest]) (*connect.Response[sandboxv1.CreateVolumeResponse], error)
+	getSessionFn   func(*connect.Request[sandboxv1.GetSessionRequest]) (*connect.Response[sandboxv1.GetSessionResponse], error)
+	getVolumeFn    func(*connect.Request[sandboxv1.GetVolumeRequest]) (*connect.Response[sandboxv1.GetVolumeResponse], error)
+	listVolumesFn  func(*connect.Request[sandboxv1.ListVolumesRequest]) (*connect.Response[sandboxv1.ListVolumesResponse], error)
+	deleteVolumeFn func(*connect.Request[sandboxv1.DeleteVolumeRequest]) (*connect.Response[sandboxv1.DeleteVolumeResponse], error)
+	resizeVolumeFn func(*connect.Request[sandboxv1.ResizeVolumeRequest]) (*connect.Response[sandboxv1.ResizeVolumeResponse], error)
+	attachVolumeFn func(*connect.Request[sandboxv1.AttachVolumeRequest]) (*connect.Response[sandboxv1.AttachVolumeResponse], error)
+	detachVolumeFn func(*connect.Request[sandboxv1.DetachVolumeRequest]) (*connect.Response[sandboxv1.DetachVolumeResponse], error)
 }
 
 func (h *volumeHandler) GetSession(_ context.Context, req *connect.Request[sandboxv1.GetSessionRequest]) (*connect.Response[sandboxv1.GetSessionResponse], error) {
@@ -53,13 +52,6 @@ func (h *volumeHandler) GetVolume(_ context.Context, req *connect.Request[sandbo
 func (h *volumeHandler) ListVolumes(_ context.Context, req *connect.Request[sandboxv1.ListVolumesRequest]) (*connect.Response[sandboxv1.ListVolumesResponse], error) {
 	if h.listVolumesFn != nil {
 		return h.listVolumesFn(req)
-	}
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
-}
-
-func (h *volumeHandler) ListProjectVolumes(_ context.Context, req *connect.Request[sandboxv1.ListProjectVolumesRequest]) (*connect.Response[sandboxv1.ListProjectVolumesResponse], error) {
-	if h.listProjectVolumesFn != nil {
-		return h.listProjectVolumesFn(req)
 	}
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
 }
@@ -118,8 +110,11 @@ func TestCreateVolume(t *testing.T) {
 
 	h := &volumeHandler{t: t}
 	h.createVolumeFn = func(req *connect.Request[sandboxv1.CreateVolumeRequest]) (*connect.Response[sandboxv1.CreateVolumeResponse], error) {
-		if req.Msg.GetWorkspaceId() != "ws-001" {
+		if req.Msg.GetWorkspaceId() != "" {
 			t.Fatalf("unexpected workspace_id: %q", req.Msg.GetWorkspaceId())
+		}
+		if req.Msg.GetProjectId() != "" {
+			t.Fatalf("unexpected project_id: %q", req.Msg.GetProjectId())
 		}
 		if req.Msg.GetName() != "my-vol" {
 			t.Fatalf("unexpected name: %q", req.Msg.GetName())
@@ -142,7 +137,6 @@ func TestCreateVolume(t *testing.T) {
 
 	_, client := newVolumeTestServer(t, h)
 	vol, err := client.CreateVolume(context.Background(),
-		WithWorkspaceID("ws-001"),
 		WithVolumeName("my-vol"),
 		WithVolumeSize(10*GB),
 	)
@@ -259,7 +253,7 @@ func TestListVolumes(t *testing.T) {
 
 	h := &volumeHandler{t: t}
 	h.listVolumesFn = func(req *connect.Request[sandboxv1.ListVolumesRequest]) (*connect.Response[sandboxv1.ListVolumesResponse], error) {
-		if req.Msg.GetWorkspaceId() != "ws-001" {
+		if req.Msg.GetWorkspaceId() != "" {
 			t.Fatalf("unexpected workspace_id: %q", req.Msg.GetWorkspaceId())
 		}
 		return connect.NewResponse(&sandboxv1.ListVolumesResponse{
@@ -272,7 +266,7 @@ func TestListVolumes(t *testing.T) {
 	}
 
 	_, client := newVolumeTestServer(t, h)
-	vols, err := client.ListVolumes(context.Background(), "ws-001")
+	vols, err := client.ListVolumes(context.Background())
 	if err != nil {
 		t.Fatalf("ListVolumes: %v", err)
 	}
@@ -284,31 +278,6 @@ func TestListVolumes(t *testing.T) {
 	}
 	if vols[2].State != VolumeStateDeleting {
 		t.Fatalf("expected DELETING state for third volume, got %q", vols[2].State)
-	}
-}
-
-func TestListProjectVolumes(t *testing.T) {
-	t.Parallel()
-
-	h := &volumeHandler{t: t}
-	h.listProjectVolumesFn = func(req *connect.Request[sandboxv1.ListProjectVolumesRequest]) (*connect.Response[sandboxv1.ListProjectVolumesResponse], error) {
-		if req.Msg.GetProjectId() != "proj-001" {
-			t.Fatalf("unexpected project_id: %q", req.Msg.GetProjectId())
-		}
-		return connect.NewResponse(&sandboxv1.ListProjectVolumesResponse{
-			Volumes: []*sandboxv1.Volume{
-				{Id: "vol-001", WorkspaceId: "ws-001", ProjectId: "proj-001", Name: "alpha", SizeBytes: 1 * GiB, State: sandboxv1.VolumeState_VOLUME_STATE_AVAILABLE},
-			},
-		}), nil
-	}
-
-	_, client := newVolumeTestServer(t, h)
-	vols, err := client.ListProjectVolumes(context.Background(), "proj-001")
-	if err != nil {
-		t.Fatalf("ListProjectVolumes: %v", err)
-	}
-	if len(vols) != 1 || vols[0].ProjectID != "proj-001" {
-		t.Fatalf("unexpected volumes: %#v", vols)
 	}
 }
 

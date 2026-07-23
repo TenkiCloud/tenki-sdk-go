@@ -83,6 +83,7 @@ Base URL resolution: `WithBaseURL()` > `TENKI_API_URL` env var > `https://api.te
 | `TENKI_API_URL` | Base URL fallback   |
 
 Use an API key (`tk_*`), sent as `Authorization: Bearer <token>`.
+Workspace API keys determine Sandbox scope automatically; ordinary calls do not require a Workspace ID.
 
 ## API
 
@@ -91,7 +92,7 @@ Use an API key (`tk_*`), sent as `Authorization: Bearer <token>`.
 - `New(opts ...Option) (*Client, error)`
 - `(*Client).Create(ctx, opts ...CreateOption) (*Session, error)` — preferred: waits by default and returns a RUNNING, exec-ready session
 - `(*Client).CreateAndWait(ctx, timeout, opts ...CreateOption) (*Session, error)` — compatibility wrapper around `Create`
-- `(*Client).List(ctx) ([]*Session, error)`
+- `(*Client).List(ctx, opts...) ([]*Session, error)`
 - `(*Client).Get(ctx, sessionID string) (*Session, error)`
 - `(*Client).WhoAmI(ctx) (*Identity, error)`
 - `(*Client).Close() error`
@@ -116,7 +117,7 @@ Use an API key (`tk_*`), sent as `Authorization: Bearer <token>`.
 
 - `(*Client).CreateVolume(ctx, opts ...CreateVolumeOption) (*Volume, error)`
 - `(*Client).GetVolume(ctx, volumeID) (*Volume, error)`
-- `(*Client).ListVolumes(ctx, workspaceID) ([]*Volume, error)`
+- `(*Client).ListVolumes(ctx, opts...) ([]*Volume, error)`
 - `(*Client).ResizeVolume(ctx, volumeID, newSizeBytes) (*Volume, error)`
 - `(*Client).DeleteVolume(ctx, volumeID) error`
 - `(*Session).AttachVolume(ctx, volumeID, mountPath, opts ...VolumeOption) error`
@@ -126,7 +127,7 @@ Use an API key (`tk_*`), sent as `Authorization: Bearer <token>`.
 
 - `(*Client).CreateSnapshot(ctx, sessionID, name, expiresAt) (*Snapshot, error)`
 - `(*Client).GetSnapshot(ctx, snapshotID) (*Snapshot, error)`
-- `(*Client).ListSnapshots(ctx) ([]*Snapshot, error)`
+- `(*Client).ListSnapshots(ctx, opts...) ([]*Snapshot, error)`
 - `(*Client).DeleteSnapshot(ctx, snapshotID) (*Snapshot, error)`
 - `(*Client).WaitSnapshotReady(ctx, snapshotID, timeout) (*Snapshot, error)`
 
@@ -134,7 +135,7 @@ Use an API key (`tk_*`), sent as `Authorization: Bearer <token>`.
 
 - `(*Client).CreateTemplate(ctx, opts ...TemplateOption) (*Template, error)`
 - `(*Client).GetTemplate(ctx, templateID) (*Template, error)`
-- `(*Client).ListTemplates(ctx, workspaceID) ([]*Template, error)`
+- `(*Client).ListTemplates(ctx, opts...) ([]*Template, error)`
 - `(*Client).UpdateTemplate(ctx, templateID, opts ...TemplateOption) (*Template, error)`
 - `(*Client).DeleteTemplate(ctx, templateID) (*Template, error)`
 - `(*Client).BuildTemplate(ctx, templateID) (*TemplateBuild, error)`
@@ -169,9 +170,9 @@ Expose a port from inside the sandbox to the caller.
 
 Publish a stable, browser-openable URL bound to a session port:
 
-- `(*Client).CreatePreviewURL(ctx, projectID, slug string, sessionID *string, port *int32) (*PreviewURL, error)`
+- `(*Client).CreatePreviewURL(ctx, slug string, sessionID *string, port *int32) (*PreviewURL, error)`
 - `(*Client).BindPreviewURL(ctx, previewURLID, sessionID string, port int32)` / `UnbindPreviewURL`
-- `(*Client).ListPreviewURLs(ctx, projectID, pageSize, pageToken)` / `GetPreviewURL` / `DeletePreviewURL`
+- `(*Client).ListPreviewURLs(ctx, pageSize, pageToken)` / `GetPreviewURL` / `DeletePreviewURL`
 
 ### Registry
 

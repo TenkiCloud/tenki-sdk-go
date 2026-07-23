@@ -58,7 +58,7 @@ func TestSDKExecUsesDataPlaneRun(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = client.Close() })
 
-	session, err := client.Create(context.Background())
+	session, err := client.Create(context.Background(), WithWorkspaceID("ws-1"))
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}

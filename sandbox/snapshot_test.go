@@ -19,7 +19,6 @@ type snapshotHandler struct {
 	listSessionSnapshotsFn   func(*connect.Request[sandboxv1.ListSessionSnapshotsRequest]) (*connect.Response[sandboxv1.ListSessionSnapshotsResponse], error)
 	listDanglingSnapshotsFn  func(*connect.Request[sandboxv1.ListDanglingSnapshotsRequest]) (*connect.Response[sandboxv1.ListDanglingSnapshotsResponse], error)
 	listWorkspaceSnapshotsFn func(*connect.Request[sandboxv1.ListWorkspaceSnapshotsRequest]) (*connect.Response[sandboxv1.ListWorkspaceSnapshotsResponse], error)
-	listProjectSnapshotsFn   func(*connect.Request[sandboxv1.ListProjectSnapshotsRequest]) (*connect.Response[sandboxv1.ListProjectSnapshotsResponse], error)
 }
 
 func (h *snapshotHandler) CreateSnapshot(_ context.Context, req *connect.Request[sandboxv1.CreateSnapshotRequest]) (*connect.Response[sandboxv1.CreateSnapshotResponse], error) {
@@ -46,13 +45,6 @@ func (h *snapshotHandler) ListDanglingSnapshots(_ context.Context, req *connect.
 func (h *snapshotHandler) ListWorkspaceSnapshots(_ context.Context, req *connect.Request[sandboxv1.ListWorkspaceSnapshotsRequest]) (*connect.Response[sandboxv1.ListWorkspaceSnapshotsResponse], error) {
 	if h.listWorkspaceSnapshotsFn != nil {
 		return h.listWorkspaceSnapshotsFn(req)
-	}
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
-}
-
-func (h *snapshotHandler) ListProjectSnapshots(_ context.Context, req *connect.Request[sandboxv1.ListProjectSnapshotsRequest]) (*connect.Response[sandboxv1.ListProjectSnapshotsResponse], error) {
-	if h.listProjectSnapshotsFn != nil {
-		return h.listProjectSnapshotsFn(req)
 	}
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
 }
@@ -100,7 +92,33 @@ func TestCreateSnapshotAsyncSetsAsyncRequest(t *testing.T) {
 	}
 }
 
-func TestListWorkspaceSnapshots(t *testing.T) {
+func TestListSnapshots(t *testing.T) {
+	t.Parallel()
+
+	workspaceID := "ws-001"
+	h := &snapshotHandler{}
+	h.listWorkspaceSnapshotsFn = func(req *connect.Request[sandboxv1.ListWorkspaceSnapshotsRequest]) (*connect.Response[sandboxv1.ListWorkspaceSnapshotsResponse], error) {
+		if req.Msg.GetWorkspaceId() != "" {
+			t.Fatalf("unexpected workspace_id: %q", req.Msg.GetWorkspaceId())
+		}
+		return connect.NewResponse(&sandboxv1.ListWorkspaceSnapshotsResponse{
+			Snapshots: []*sandboxv1.Snapshot{
+				{Id: "snap-001", SessionId: "sess-001", WorkspaceId: &workspaceID},
+			},
+		}), nil
+	}
+
+	client := newSnapshotTestClient(t, h)
+	snapshots, err := client.ListSnapshots(context.Background())
+	if err != nil {
+		t.Fatalf("ListSnapshots: %v", err)
+	}
+	if len(snapshots) != 1 || snapshots[0].ID != "snap-001" || snapshots[0].WorkspaceID != "ws-001" {
+		t.Fatalf("unexpected snapshots: %#v", snapshots)
+	}
+}
+
+func TestListSnapshotsSupportsExplicitWorkspaceScopeForServiceCredentials(t *testing.T) {
 	t.Parallel()
 
 	h := &snapshotHandler{}
@@ -108,20 +126,12 @@ func TestListWorkspaceSnapshots(t *testing.T) {
 		if req.Msg.GetWorkspaceId() != "ws-001" {
 			t.Fatalf("unexpected workspace_id: %q", req.Msg.GetWorkspaceId())
 		}
-		return connect.NewResponse(&sandboxv1.ListWorkspaceSnapshotsResponse{
-			Snapshots: []*sandboxv1.Snapshot{
-				{Id: "snap-001", SessionId: "sess-001", ProjectId: "proj-001"},
-			},
-		}), nil
+		return connect.NewResponse(&sandboxv1.ListWorkspaceSnapshotsResponse{}), nil
 	}
 
 	client := newSnapshotTestClient(t, h)
-	snapshots, err := client.ListWorkspaceSnapshots(context.Background(), "ws-001")
-	if err != nil {
-		t.Fatalf("ListWorkspaceSnapshots: %v", err)
-	}
-	if len(snapshots) != 1 || snapshots[0].ID != "snap-001" || snapshots[0].ProjectID != "proj-001" {
-		t.Fatalf("unexpected snapshots: %#v", snapshots)
+	if _, err := client.ListSnapshots(context.Background(), WithWorkspaceID("ws-001")); err != nil {
+		t.Fatalf("ListSnapshots: %v", err)
 	}
 }
 
@@ -171,31 +181,6 @@ func TestListDanglingSnapshots(t *testing.T) {
 		t.Fatalf("ListDanglingSnapshots: %v", err)
 	}
 	if len(snapshots) != 1 || snapshots[0].ID != "snap-001" {
-		t.Fatalf("unexpected snapshots: %#v", snapshots)
-	}
-}
-
-func TestListProjectSnapshots(t *testing.T) {
-	t.Parallel()
-
-	h := &snapshotHandler{}
-	h.listProjectSnapshotsFn = func(req *connect.Request[sandboxv1.ListProjectSnapshotsRequest]) (*connect.Response[sandboxv1.ListProjectSnapshotsResponse], error) {
-		if req.Msg.GetProjectId() != "proj-001" {
-			t.Fatalf("unexpected project_id: %q", req.Msg.GetProjectId())
-		}
-		return connect.NewResponse(&sandboxv1.ListProjectSnapshotsResponse{
-			Snapshots: []*sandboxv1.Snapshot{
-				{Id: "snap-001", SessionId: "sess-001", ProjectId: "proj-001"},
-			},
-		}), nil
-	}
-
-	client := newSnapshotTestClient(t, h)
-	snapshots, err := client.ListProjectSnapshots(context.Background(), "proj-001")
-	if err != nil {
-		t.Fatalf("ListProjectSnapshots: %v", err)
-	}
-	if len(snapshots) != 1 || snapshots[0].ID != "snap-001" || snapshots[0].ProjectID != "proj-001" {
 		t.Fatalf("unexpected snapshots: %#v", snapshots)
 	}
 }

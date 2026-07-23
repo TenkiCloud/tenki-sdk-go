@@ -13282,9 +13282,9 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\a_sticky\"|\n" +
 	"\x14ListSessionsResponse\x12<\n" +
 	"\bsessions\x18\x01 \x03(\v2 .tenki.sandbox.v1.SandboxSessionR\bsessions\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xb4\x02\n" +
-	"\x1dListWorkspaceSandboxesRequest\x12+\n" +
-	"\fworkspace_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\vworkspaceId\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xb7\x02\n" +
+	"\x1dListWorkspaceSandboxesRequest\x12.\n" +
+	"\fworkspace_id\x18\x01 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\xb0\x01\x01R\vworkspaceId\x12&\n" +
 	"\tpage_size\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R\bpageSize\x12\x1d\n" +
 	"\n" +
 	"page_token\x18\x03 \x01(\tR\tpageToken\x12-\n" +
@@ -13325,9 +13325,9 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\asession\x18\x01 \x01(\v2 .tenki.sandbox.v1.SandboxSessionR\asession\"\x88\x01\n" +
 	"\x1cListProjectSandboxesResponse\x12<\n" +
 	"\bsessions\x18\x01 \x03(\v2 .tenki.sandbox.v1.SandboxSessionR\bsessions\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken:\x02\x18\x01\"\xcf\x01\n" +
-	"\x13CreateVolumeRequest\x12+\n" +
-	"\fworkspace_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\vworkspaceId\x12\x1b\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken:\x02\x18\x01\"\xd2\x01\n" +
+	"\x13CreateVolumeRequest\x12.\n" +
+	"\fworkspace_id\x18\x01 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\xb0\x01\x01R\vworkspaceId\x12\x1b\n" +
 	"\x04name\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x12/\n" +
 	"\n" +
 	"size_bytes\x18\x03 \x01(\x03B\x10\xbaH\r\"\v\x18\x80\x80\x80\x80\x90\x03(\x80\x80@R\tsizeBytes\x12.\n" +
@@ -13341,9 +13341,9 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\tvolume_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\bvolumeId\"\x98\x01\n" +
 	"\x11GetVolumeResponse\x120\n" +
 	"\x06volume\x18\x01 \x01(\v2\x18.tenki.sandbox.v1.VolumeR\x06volume\x12Q\n" +
-	"\x12active_attachments\x18\x02 \x03(\v2\".tenki.sandbox.v1.VolumeAttachmentR\x11activeAttachments\"\x88\x01\n" +
-	"\x12ListVolumesRequest\x12+\n" +
-	"\fworkspace_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\vworkspaceId\x12&\n" +
+	"\x12active_attachments\x18\x02 \x03(\v2\".tenki.sandbox.v1.VolumeAttachmentR\x11activeAttachments\"\x8b\x01\n" +
+	"\x12ListVolumesRequest\x12.\n" +
+	"\fworkspace_id\x18\x01 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\xb0\x01\x01R\vworkspaceId\x12&\n" +
 	"\tpage_size\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R\bpageSize\x12\x1d\n" +
 	"\n" +
 	"page_token\x18\x03 \x01(\tR\tpageToken\"q\n" +
@@ -13788,11 +13788,10 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x0f_preview_url_idB\a\n" +
 	"\x05_slug\"P\n" +
 	"\x18ListExposedPortsResponse\x124\n" +
-	"\x05ports\x18\x01 \x03(\v2\x1e.tenki.sandbox.v1.PortExposureR\x05ports\"\xb3\x02\n" +
-	"\x17CreatePreviewUrlRequest\x12)\n" +
+	"\x05ports\x18\x01 \x03(\v2\x1e.tenki.sandbox.v1.PortExposureR\x05ports\"\xb6\x02\n" +
+	"\x17CreatePreviewUrlRequest\x12,\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\tB\n" +
-	"\xbaH\x05r\x03\xb0\x01\x01\x18\x01R\tprojectId\x12>\n" +
+	"project_id\x18\x01 \x01(\tB\r\xbaH\b\xd8\x01\x01r\x03\xb0\x01\x01\x18\x01R\tprojectId\x12>\n" +
 	"\x04slug\x18\x02 \x01(\tB*\xbaH'r%\x10\x03\x18?2\x1f^[a-z0-9]([a-z0-9-]*[a-z0-9])?$R\x04slug\x12,\n" +
 	"\n" +
 	"session_id\x18\x03 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x00R\tsessionId\x88\x01\x01\x12$\n" +
@@ -13819,11 +13818,10 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x0epreview_url_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\fpreviewUrlId\"Y\n" +
 	"\x18UnbindPreviewUrlResponse\x12=\n" +
 	"\vpreview_url\x18\x01 \x01(\v2\x1c.tenki.sandbox.v1.PreviewUrlR\n" +
-	"previewUrl\"\xcd\x01\n" +
-	"\x16ListPreviewUrlsRequest\x12)\n" +
+	"previewUrl\"\xd0\x01\n" +
+	"\x16ListPreviewUrlsRequest\x12,\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\tB\n" +
-	"\xbaH\x05r\x03\xb0\x01\x01\x18\x01R\tprojectId\x12&\n" +
+	"project_id\x18\x01 \x01(\tB\r\xbaH\b\xd8\x01\x01r\x03\xb0\x01\x01\x18\x01R\tprojectId\x12&\n" +
 	"\tpage_size\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R\bpageSize\x12\x1d\n" +
 	"\n" +
 	"page_token\x18\x03 \x01(\tR\tpageToken\x120\n" +
@@ -13904,9 +13902,9 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"page_token\x18\x02 \x01(\tR\tpageToken\"\x81\x01\n" +
 	"\x1dListDanglingSnapshotsResponse\x128\n" +
 	"\tsnapshots\x18\x01 \x03(\v2\x1a.tenki.sandbox.v1.SnapshotR\tsnapshots\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\x93\x01\n" +
-	"\x1dListWorkspaceSnapshotsRequest\x12+\n" +
-	"\fworkspace_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\vworkspaceId\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\x96\x01\n" +
+	"\x1dListWorkspaceSnapshotsRequest\x12.\n" +
+	"\fworkspace_id\x18\x01 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\xb0\x01\x01R\vworkspaceId\x12&\n" +
 	"\tpage_size\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R\bpageSize\x12\x1d\n" +
 	"\n" +
 	"page_token\x18\x03 \x01(\tR\tpageToken\"\x82\x01\n" +
@@ -13924,9 +13922,9 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\r_workspace_id\"\x84\x01\n" +
 	"\x1cListProjectSnapshotsResponse\x128\n" +
 	"\tsnapshots\x18\x01 \x03(\v2\x1a.tenki.sandbox.v1.SnapshotR\tsnapshots\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken:\x02\x18\x01\"\x8d\x01\n" +
-	"\x1fGetWorkspaceSandboxUsageRequest\x12+\n" +
-	"\fworkspace_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\vworkspaceId\x12.\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken:\x02\x18\x01\"\x90\x01\n" +
+	"\x1fGetWorkspaceSandboxUsageRequest\x12.\n" +
+	"\fworkspace_id\x18\x01 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\xb0\x01\x01R\vworkspaceId\x12.\n" +
 	"\n" +
 	"project_id\x18\x02 \x01(\tB\n" +
 	"\xbaH\x05r\x03\xb0\x01\x01\x18\x01H\x00R\tprojectId\x88\x01\x01B\r\n" +
@@ -14071,15 +14069,15 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"#DATA_PLANE_ROUTE_STATUS_UNSPECIFIED\x10\x00\x12$\n" +
 	" DATA_PLANE_ROUTE_STATUS_VERIFIED\x10\x01\x12%\n" +
 	"!DATA_PLANE_ROUTE_STATUS_NOT_READY\x10\x02\x12\"\n" +
-	"\x1eDATA_PLANE_ROUTE_STATUS_FAILED\x10\x032\xb4C\n" +
+	"\x1eDATA_PLANE_ROUTE_STATUS_FAILED\x10\x032\xc0C\n" +
 	"\x0eSandboxService\x12`\n" +
 	"\rCreateSession\x12&.tenki.sandbox.v1.CreateSessionRequest\x1a'.tenki.sandbox.v1.CreateSessionResponse\x12~\n" +
 	"\x17CreateSessionCredential\x120.tenki.sandbox.v1.CreateSessionCredentialRequest\x1a1.tenki.sandbox.v1.CreateSessionCredentialResponse\x12W\n" +
 	"\n" +
 	"GetSession\x12#.tenki.sandbox.v1.GetSessionRequest\x1a$.tenki.sandbox.v1.GetSessionResponse\x12\\\n" +
 	"\vWaitSession\x12$.tenki.sandbox.v1.WaitSessionRequest\x1a%.tenki.sandbox.v1.WaitSessionResponse0\x01\x12]\n" +
-	"\fListSessions\x12%.tenki.sandbox.v1.ListSessionsRequest\x1a&.tenki.sandbox.v1.ListSessionsResponse\x12{\n" +
-	"\x16ListWorkspaceSandboxes\x12/.tenki.sandbox.v1.ListWorkspaceSandboxesRequest\x1a0.tenki.sandbox.v1.ListWorkspaceSandboxesResponse\x12z\n" +
+	"\fListSessions\x12%.tenki.sandbox.v1.ListSessionsRequest\x1a&.tenki.sandbox.v1.ListSessionsResponse\x12\x80\x01\n" +
+	"\x16ListWorkspaceSandboxes\x12/.tenki.sandbox.v1.ListWorkspaceSandboxesRequest\x1a0.tenki.sandbox.v1.ListWorkspaceSandboxesResponse\"\x03\x88\x02\x01\x12z\n" +
 	"\x14ListProjectSandboxes\x12-.tenki.sandbox.v1.ListProjectSandboxesRequest\x1a..tenki.sandbox.v1.ListProjectSandboxesResponse\"\x03\x88\x02\x01\x12`\n" +
 	"\rUpdateSession\x12&.tenki.sandbox.v1.UpdateSessionRequest\x1a'.tenki.sandbox.v1.UpdateSessionResponse\x12]\n" +
 	"\fCreateVolume\x12%.tenki.sandbox.v1.CreateVolumeRequest\x1a&.tenki.sandbox.v1.CreateVolumeResponse\x12T\n" +
@@ -14121,8 +14119,8 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x16GetSnapshotDownloadURL\x12/.tenki.sandbox.v1.GetSnapshotDownloadURLRequest\x1a0.tenki.sandbox.v1.GetSnapshotDownloadURLResponse\x12`\n" +
 	"\rListSnapshots\x12&.tenki.sandbox.v1.ListSnapshotsRequest\x1a'.tenki.sandbox.v1.ListSnapshotsResponse\x12u\n" +
 	"\x14ListSessionSnapshots\x12-.tenki.sandbox.v1.ListSessionSnapshotsRequest\x1a..tenki.sandbox.v1.ListSessionSnapshotsResponse\x12x\n" +
-	"\x15ListDanglingSnapshots\x12..tenki.sandbox.v1.ListDanglingSnapshotsRequest\x1a/.tenki.sandbox.v1.ListDanglingSnapshotsResponse\x12{\n" +
-	"\x16ListWorkspaceSnapshots\x12/.tenki.sandbox.v1.ListWorkspaceSnapshotsRequest\x1a0.tenki.sandbox.v1.ListWorkspaceSnapshotsResponse\x12z\n" +
+	"\x15ListDanglingSnapshots\x12..tenki.sandbox.v1.ListDanglingSnapshotsRequest\x1a/.tenki.sandbox.v1.ListDanglingSnapshotsResponse\x12\x80\x01\n" +
+	"\x16ListWorkspaceSnapshots\x12/.tenki.sandbox.v1.ListWorkspaceSnapshotsRequest\x1a0.tenki.sandbox.v1.ListWorkspaceSnapshotsResponse\"\x03\x88\x02\x01\x12z\n" +
 	"\x14ListProjectSnapshots\x12-.tenki.sandbox.v1.ListProjectSnapshotsRequest\x1a..tenki.sandbox.v1.ListProjectSnapshotsResponse\"\x03\x88\x02\x01\x12\x81\x01\n" +
 	"\x18GetWorkspaceSandboxUsage\x121.tenki.sandbox.v1.GetWorkspaceSandboxUsageRequest\x1a2.tenki.sandbox.v1.GetWorkspaceSandboxUsageResponse\x12\x8a\x01\n" +
 	"\x1bGetWorkspaceSandboxSettings\x124.tenki.sandbox.v1.GetWorkspaceSandboxSettingsRequest\x1a5.tenki.sandbox.v1.GetWorkspaceSandboxSettingsResponse\x12\x93\x01\n" +

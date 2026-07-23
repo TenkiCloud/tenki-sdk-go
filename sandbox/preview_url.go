@@ -11,7 +11,6 @@ import (
 
 type PreviewURL struct {
 	ID             string
-	ProjectID      string
 	WorkspaceID    string
 	OwnerID        string
 	Slug           string
@@ -30,7 +29,6 @@ func previewURLFromProto(protoPreviewURL *sandboxv1.PreviewUrl) *PreviewURL {
 	}
 	result := &PreviewURL{
 		ID:          protoPreviewURL.Id,
-		ProjectID:   protoPreviewURL.ProjectId,
 		WorkspaceID: protoPreviewURL.WorkspaceId,
 		OwnerID:     protoPreviewURL.OwnerId,
 		Slug:        protoPreviewURL.Slug,
@@ -52,10 +50,19 @@ func previewURLFromProto(protoPreviewURL *sandboxv1.PreviewUrl) *PreviewURL {
 	return result
 }
 
-func (c *Client) CreatePreviewURL(ctx context.Context, projectID string, slug string, sessionID *string, port *int32) (*PreviewURL, error) {
+// CreatePreviewURL creates a sticky preview URL owned by the Workspace API key.
+func (c *Client) CreatePreviewURL(ctx context.Context, slug string, sessionID *string, port *int32, opts ...PreviewURLOption) (*PreviewURL, error) {
+	cfg := previewURLConfig{}
+	for _, opt := range opts {
+		if opt != nil {
+			opt.applyPreviewURL(&cfg)
+		}
+	}
 	req := &sandboxv1.CreatePreviewUrlRequest{
-		ProjectId: strings.TrimSpace(projectID),
-		Slug:      strings.TrimSpace(slug),
+		Slug: strings.TrimSpace(slug),
+	}
+	if cfg.workspaceID != "" {
+		req.WorkspaceId = &cfg.workspaceID
 	}
 	if sessionID != nil {
 		req.SessionId = sessionID
@@ -99,12 +106,22 @@ func (c *Client) UnbindPreviewURL(ctx context.Context, previewURLID string) (*Pr
 	return previewURLFromProto(resp.Msg.PreviewUrl), nil
 }
 
-func (c *Client) ListPreviewURLs(ctx context.Context, projectID string, pageSize int32, pageToken string) ([]*PreviewURL, string, error) {
-	resp, err := c.sandbox.ListPreviewUrls(ctx, connect.NewRequest(&sandboxv1.ListPreviewUrlsRequest{
-		ProjectId: strings.TrimSpace(projectID),
+// ListPreviewURLs lists sticky preview URLs owned by the Workspace API key.
+func (c *Client) ListPreviewURLs(ctx context.Context, pageSize int32, pageToken string, opts ...PreviewURLOption) ([]*PreviewURL, string, error) {
+	cfg := previewURLConfig{}
+	for _, opt := range opts {
+		if opt != nil {
+			opt.applyPreviewURL(&cfg)
+		}
+	}
+	req := &sandboxv1.ListPreviewUrlsRequest{
 		PageSize:  pageSize,
 		PageToken: strings.TrimSpace(pageToken),
-	}))
+	}
+	if cfg.workspaceID != "" {
+		req.WorkspaceId = &cfg.workspaceID
+	}
+	resp, err := c.sandbox.ListPreviewUrls(ctx, connect.NewRequest(req))
 	if err != nil {
 		return nil, "", mapError(err)
 	}

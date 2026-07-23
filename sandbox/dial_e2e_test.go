@@ -17,7 +17,7 @@ import (
 
 // Mirrors packages/e2e/src/sandbox/dial_*.test.ts. Run with:
 //   SANDBOX_E2E=1 TENKI_AUTH_TOKEN=... TENKI_API_ENDPOINT=... TENKI_SANDBOX_GATEWAY_URL=... \
-//   TENKI_SANDBOX_WORKSPACE_ID=... TENKI_SANDBOX_PROJECT_ID=... \
+//   TENKI_SANDBOX_WORKSPACE_ID=... \
 //   go test -tags=sdk_e2e -run TestDial ./sdk/sandbox/go/...
 
 func newSession(t *testing.T) (*sandbox.Session, func()) {
@@ -44,9 +44,6 @@ func newSession(t *testing.T) (*sandbox.Session, func()) {
 	}
 	if ws := os.Getenv("TENKI_SANDBOX_WORKSPACE_ID"); ws != "" {
 		createOpts = append(createOpts, sandbox.WithWorkspaceID(ws))
-	}
-	if pid := os.Getenv("TENKI_SANDBOX_PROJECT_ID"); pid != "" {
-		createOpts = append(createOpts, sandbox.WithProjectID(pid))
 	}
 	if image := os.Getenv("TENKI_SANDBOX_IMAGE"); image != "" {
 		createOpts = append(createOpts, sandbox.WithImage(image))

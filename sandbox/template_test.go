@@ -22,7 +22,6 @@ type templateHandler struct {
 	createTemplateFn           func(*connect.Request[sandboxv1.CreateTemplateRequest]) (*connect.Response[sandboxv1.CreateTemplateResponse], error)
 	getTemplateFn              func(*connect.Request[sandboxv1.GetTemplateRequest]) (*connect.Response[sandboxv1.GetTemplateResponse], error)
 	listTemplatesFn            func(*connect.Request[sandboxv1.ListTemplatesRequest]) (*connect.Response[sandboxv1.ListTemplatesResponse], error)
-	listProjectTemplatesFn     func(*connect.Request[sandboxv1.ListProjectTemplatesRequest]) (*connect.Response[sandboxv1.ListProjectTemplatesResponse], error)
 	updateTemplateFn           func(*connect.Request[sandboxv1.UpdateTemplateRequest]) (*connect.Response[sandboxv1.UpdateTemplateResponse], error)
 	deleteTemplateFn           func(*connect.Request[sandboxv1.DeleteTemplateRequest]) (*connect.Response[sandboxv1.DeleteTemplateResponse], error)
 	buildTemplateFn            func(*connect.Request[sandboxv1.BuildTemplateRequest]) (*connect.Response[sandboxv1.BuildTemplateResponse], error)
@@ -51,13 +50,6 @@ func (h *templateHandler) GetTemplate(_ context.Context, req *connect.Request[sa
 func (h *templateHandler) ListTemplates(_ context.Context, req *connect.Request[sandboxv1.ListTemplatesRequest]) (*connect.Response[sandboxv1.ListTemplatesResponse], error) {
 	if h.listTemplatesFn != nil {
 		return h.listTemplatesFn(req)
-	}
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
-}
-
-func (h *templateHandler) ListProjectTemplates(_ context.Context, req *connect.Request[sandboxv1.ListProjectTemplatesRequest]) (*connect.Response[sandboxv1.ListProjectTemplatesResponse], error) {
-	if h.listProjectTemplatesFn != nil {
-		return h.listProjectTemplatesFn(req)
 	}
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
 }
@@ -150,8 +142,11 @@ func TestCreateTemplate(t *testing.T) {
 
 	h := &templateHandler{}
 	h.createTemplateFn = func(req *connect.Request[sandboxv1.CreateTemplateRequest]) (*connect.Response[sandboxv1.CreateTemplateResponse], error) {
-		if req.Msg.GetWorkspaceId() != "ws-001" {
+		if req.Msg.GetWorkspaceId() != "" {
 			t.Fatalf("unexpected workspace_id: %q", req.Msg.GetWorkspaceId())
+		}
+		if req.Msg.GetProjectId() != "" {
+			t.Fatalf("unexpected project_id: %q", req.Msg.GetProjectId())
 		}
 		if req.Msg.GetName() != "python" {
 			t.Fatalf("unexpected name: %q", req.Msg.GetName())
@@ -195,7 +190,6 @@ func TestCreateTemplate(t *testing.T) {
 
 	client := newTemplateTestClient(t, h)
 	template, err := client.CreateTemplate(context.Background(),
-		WithWorkspaceID("ws-001"),
 		WithTemplateName("python"),
 		WithBaseImageID("sandbox"),
 		WithSetupScript("uv sync"),
@@ -228,7 +222,7 @@ func TestTemplateCRUDAndBuild(t *testing.T) {
 		}), nil
 	}
 	h.listTemplatesFn = func(req *connect.Request[sandboxv1.ListTemplatesRequest]) (*connect.Response[sandboxv1.ListTemplatesResponse], error) {
-		if req.Msg.GetWorkspaceId() != "ws-001" {
+		if req.Msg.GetWorkspaceId() != "" {
 			t.Fatalf("unexpected workspace_id: %q", req.Msg.GetWorkspaceId())
 		}
 		return connect.NewResponse(&sandboxv1.ListTemplatesResponse{
@@ -299,7 +293,7 @@ func TestTemplateCRUDAndBuild(t *testing.T) {
 		t.Fatalf("GetTemplate: template=%#v err=%v", template, err)
 	}
 
-	templates, err := client.ListTemplates(context.Background(), "ws-001")
+	templates, err := client.ListTemplates(context.Background())
 	if err != nil || len(templates) != 2 {
 		t.Fatalf("ListTemplates: templates=%d err=%v", len(templates), err)
 	}
@@ -342,31 +336,6 @@ func TestTemplateBuildFromProtoPreservesBuildSecretKeys(t *testing.T) {
 
 	if build == nil || build.Provenance == nil || !reflect.DeepEqual(build.Provenance.BuildSecretKeys, []string{"GIT_TOKEN", "NPM_TOKEN"}) {
 		t.Fatalf("unexpected provenance: %#v", build)
-	}
-}
-
-func TestListProjectTemplates(t *testing.T) {
-	t.Parallel()
-
-	h := &templateHandler{}
-	h.listProjectTemplatesFn = func(req *connect.Request[sandboxv1.ListProjectTemplatesRequest]) (*connect.Response[sandboxv1.ListProjectTemplatesResponse], error) {
-		if req.Msg.GetProjectId() != "proj-001" {
-			t.Fatalf("unexpected project_id: %q", req.Msg.GetProjectId())
-		}
-		return connect.NewResponse(&sandboxv1.ListProjectTemplatesResponse{
-			Templates: []*sandboxv1.Template{
-				{Id: "tpl-001", WorkspaceId: "ws-001", ProjectId: "proj-001", OwnerType: "workspace", OwnerId: "ws-001", Name: "alpha"},
-			},
-		}), nil
-	}
-
-	client := newTemplateTestClient(t, h)
-	templates, err := client.ListProjectTemplates(context.Background(), "proj-001")
-	if err != nil {
-		t.Fatalf("ListProjectTemplates: %v", err)
-	}
-	if len(templates) != 1 || templates[0].ProjectID != "proj-001" {
-		t.Fatalf("unexpected templates: %#v", templates)
 	}
 }
 
@@ -503,7 +472,7 @@ func TestCreateWithImageOption(t *testing.T) {
 	}
 
 	client := newTemplateTestClient(t, h)
-	session, err := client.Create(context.Background(), WithImage("pub/template:prod"))
+	session, err := client.Create(context.Background(), WithWorkspaceID("ws-1"), WithImage("pub/template:prod"))
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -538,6 +507,7 @@ func TestCreateFromTemplateSpec(t *testing.T) {
 
 	client := newTemplateTestClient(t, h)
 	_, err := client.Create(context.Background(),
+		WithWorkspaceID("ws-1"),
 		FromTemplateSpec(&Template{ID: templateID}),
 		WithSetupEnvs(map[string]string{"MODE": "dev"}),
 		WithSetupSecrets(map[string]string{"GH_TOKEN": "secret"}),
@@ -552,6 +522,7 @@ func TestCreateRejectsConflictingTemplateSpecSource(t *testing.T) {
 
 	client := newTemplateTestClient(t, &templateHandler{})
 	_, err := client.Create(context.Background(),
+		WithWorkspaceID("ws-1"),
 		WithImage("acme/app:latest"),
 		FromTemplateSpec("8d995c1c-8e24-4b3a-a8ab-a00316357385"),
 	)
@@ -602,7 +573,7 @@ func TestCreateWithSnapshotOmitsDefaultResourceOverrides(t *testing.T) {
 	}
 
 	client := newTemplateTestClient(t, h)
-	session, err := client.Create(context.Background(), WithSnapshot("snap-001"))
+	session, err := client.Create(context.Background(), WithWorkspaceID("ws-1"), WithSnapshot("snap-001"))
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -635,6 +606,7 @@ func TestCreateWithImageExplicitResources(t *testing.T) {
 	client := newTemplateTestClient(t, h)
 	session, err := client.Create(
 		context.Background(),
+		WithWorkspaceID("ws-1"),
 		WithImage("pub/template:prod"),
 		WithCPUCores(4),
 		WithMemoryMB(8192),
