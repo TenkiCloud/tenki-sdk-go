@@ -1296,9 +1296,14 @@ type Snapshot struct {
 	RbdRootfsImage string `protobuf:"bytes,30,opt,name=rbd_rootfs_image,json=rbdRootfsImage,proto3" json:"rbd_rootfs_image,omitempty"`
 	// restore_mode controls how a snapshot is launched. MEMORY restores the full
 	// CH memory/state/config snapshot. COLD_BOOT boots only the rootfs disk.
-	RestoreMode   string `protobuf:"bytes,31,opt,name=restore_mode,json=restoreMode,proto3" json:"restore_mode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	RestoreMode string `protobuf:"bytes,31,opt,name=restore_mode,json=restoreMode,proto3" json:"restore_mode,omitempty"`
+	// balance_paused_at marks the snapshot as on billing hold: set when the
+	// workspace balance hit zero. On-hold snapshots stop accruing storage
+	// charges, cannot be restored or launch sessions, and are deleted once the
+	// stamped expires_at passes without the balance recovering.
+	BalancePausedAt *timestamppb.Timestamp `protobuf:"bytes,32,opt,name=balance_paused_at,json=balancePausedAt,proto3,oneof" json:"balance_paused_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Snapshot) Reset() {
@@ -1547,6 +1552,13 @@ func (x *Snapshot) GetRestoreMode() string {
 		return x.RestoreMode
 	}
 	return ""
+}
+
+func (x *Snapshot) GetBalancePausedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.BalancePausedAt
+	}
+	return nil
 }
 
 type WorkspaceSandboxSettings struct {
@@ -12992,7 +13004,7 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x14_source_registry_refB\x13\n" +
 	"\x11_pause_expires_atB\x10\n" +
 	"\x0e_runtime_errorB\x15\n" +
-	"\x13_source_template_id\"\xb5\f\n" +
+	"\x13_source_template_id\"\x98\r\n" +
 	"\bSnapshot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -13033,7 +13045,9 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"cpuProfile\x12C\n" +
 	"\rceph_ready_at\x18\x1d \x01(\v2\x1a.google.protobuf.TimestampH\tR\vcephReadyAt\x88\x01\x01\x12(\n" +
 	"\x10rbd_rootfs_image\x18\x1e \x01(\tR\x0erbdRootfsImage\x12!\n" +
-	"\frestore_mode\x18\x1f \x01(\tR\vrestoreModeB\x0f\n" +
+	"\frestore_mode\x18\x1f \x01(\tR\vrestoreMode\x12K\n" +
+	"\x11balance_paused_at\x18  \x01(\v2\x1a.google.protobuf.TimestampH\n" +
+	"R\x0fbalancePausedAt\x88\x01\x01B\x0f\n" +
 	"\r_workspace_idB\a\n" +
 	"\x05_nameB\r\n" +
 	"\v_expires_atB\f\n" +
@@ -13044,7 +13058,8 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x14_local_ready_host_idB\x11\n" +
 	"\x0f_r2_uploaded_atB\x12\n" +
 	"\x10_nfs_uploaded_atB\x10\n" +
-	"\x0e_ceph_ready_at\"\xbb\a\n" +
+	"\x0e_ceph_ready_atB\x14\n" +
+	"\x12_balance_paused_at\"\xbb\a\n" +
 	"\x18WorkspaceSandboxSettings\x12+\n" +
 	"\fworkspace_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\vworkspaceId\x12G\n" +
 	"\x0fpause_retention\x18\x02 \x01(\v2\x19.google.protobuf.DurationH\x00R\x0epauseRetention\x88\x01\x01\x12M\n" +
@@ -14465,332 +14480,333 @@ var file_tenki_sandbox_v1_sandbox_proto_depIdxs = []int32{
 	214, // 20: tenki.sandbox.v1.Snapshot.nfs_uploaded_at:type_name -> google.protobuf.Timestamp
 	5,   // 21: tenki.sandbox.v1.Snapshot.durability_state:type_name -> tenki.sandbox.v1.SnapshotDurabilityState
 	214, // 22: tenki.sandbox.v1.Snapshot.ceph_ready_at:type_name -> google.protobuf.Timestamp
-	215, // 23: tenki.sandbox.v1.WorkspaceSandboxSettings.pause_retention:type_name -> google.protobuf.Duration
-	215, // 24: tenki.sandbox.v1.WorkspaceSandboxSettings.snapshot_retention:type_name -> google.protobuf.Duration
-	6,   // 25: tenki.sandbox.v1.WorkspaceSandboxUsageLimit.unit:type_name -> tenki.sandbox.v1.SandboxUsageUnit
-	215, // 26: tenki.sandbox.v1.WorkspaceSnapshotRetentionSettings.pause_retention:type_name -> google.protobuf.Duration
-	215, // 27: tenki.sandbox.v1.WorkspaceSnapshotRetentionSettings.snapshot_retention:type_name -> google.protobuf.Duration
-	214, // 28: tenki.sandbox.v1.PreviewUrl.created_at:type_name -> google.protobuf.Timestamp
-	214, // 29: tenki.sandbox.v1.PreviewUrl.updated_at:type_name -> google.protobuf.Timestamp
-	214, // 30: tenki.sandbox.v1.PreviewUrl.last_accessed_at:type_name -> google.protobuf.Timestamp
-	1,   // 31: tenki.sandbox.v1.CommandExecution.status:type_name -> tenki.sandbox.v1.CommandStatus
-	214, // 32: tenki.sandbox.v1.CommandExecution.started_at:type_name -> google.protobuf.Timestamp
-	214, // 33: tenki.sandbox.v1.CommandExecution.ended_at:type_name -> google.protobuf.Timestamp
-	215, // 34: tenki.sandbox.v1.CreateSessionRequest.max_duration:type_name -> google.protobuf.Duration
-	207, // 35: tenki.sandbox.v1.CreateSessionRequest.metadata:type_name -> tenki.sandbox.v1.CreateSessionRequest.MetadataEntry
-	208, // 36: tenki.sandbox.v1.CreateSessionRequest.env:type_name -> tenki.sandbox.v1.CreateSessionRequest.EnvEntry
-	12,  // 37: tenki.sandbox.v1.CreateSessionRequest.volumes:type_name -> tenki.sandbox.v1.VolumeMount
-	215, // 38: tenki.sandbox.v1.CreateSessionRequest.pause_retention:type_name -> google.protobuf.Duration
-	209, // 39: tenki.sandbox.v1.CreateSessionRequest.setup_env:type_name -> tenki.sandbox.v1.CreateSessionRequest.SetupEnvEntry
-	210, // 40: tenki.sandbox.v1.CreateSessionRequest.setup_secrets:type_name -> tenki.sandbox.v1.CreateSessionRequest.SetupSecretsEntry
-	14,  // 41: tenki.sandbox.v1.CreateSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
-	24,  // 42: tenki.sandbox.v1.CreateSessionResponse.credential:type_name -> tenki.sandbox.v1.SessionCredential
-	7,   // 43: tenki.sandbox.v1.CreateSessionResponse.route_status:type_name -> tenki.sandbox.v1.DataPlaneRouteStatus
-	14,  // 44: tenki.sandbox.v1.TemplateRuntimeFailure.session:type_name -> tenki.sandbox.v1.SandboxSession
-	214, // 45: tenki.sandbox.v1.SessionCredential.expires_at:type_name -> google.protobuf.Timestamp
-	24,  // 46: tenki.sandbox.v1.CreateSessionCredentialResponse.credential:type_name -> tenki.sandbox.v1.SessionCredential
-	7,   // 47: tenki.sandbox.v1.CreateSessionCredentialResponse.route_status:type_name -> tenki.sandbox.v1.DataPlaneRouteStatus
-	88,  // 48: tenki.sandbox.v1.SandboxSessionDataPlaneServiceRunRequest.frame:type_name -> tenki.sandbox.v1.RunRequest
-	91,  // 49: tenki.sandbox.v1.SandboxSessionDataPlaneServiceRunResponse.frame:type_name -> tenki.sandbox.v1.RunResponse
-	83,  // 50: tenki.sandbox.v1.SandboxSessionDataPlaneServiceDialRequest.frame:type_name -> tenki.sandbox.v1.DialRequest
-	85,  // 51: tenki.sandbox.v1.SandboxSessionDataPlaneServiceDialResponse.frame:type_name -> tenki.sandbox.v1.DialResponse
-	134, // 52: tenki.sandbox.v1.SandboxSessionDataPlaneServiceHostPortTunnelRequest.frame:type_name -> tenki.sandbox.v1.HostPortTunnelRequest
-	140, // 53: tenki.sandbox.v1.SandboxSessionDataPlaneServiceHostPortTunnelResponse.frame:type_name -> tenki.sandbox.v1.HostPortTunnelResponse
-	101, // 54: tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileRequest.request:type_name -> tenki.sandbox.v1.ReadFileRequest
-	102, // 55: tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileResponse.response:type_name -> tenki.sandbox.v1.ReadFileResponse
-	99,  // 56: tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileRequest.request:type_name -> tenki.sandbox.v1.WriteFileRequest
-	100, // 57: tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileResponse.response:type_name -> tenki.sandbox.v1.WriteFileResponse
-	103, // 58: tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileStreamRequest.request:type_name -> tenki.sandbox.v1.ReadFileStreamRequest
-	104, // 59: tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileStreamResponse.response:type_name -> tenki.sandbox.v1.ReadFileStreamResponse
-	105, // 60: tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileStreamRequest.frame:type_name -> tenki.sandbox.v1.WriteFileStreamRequest
-	107, // 61: tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileStreamResponse.response:type_name -> tenki.sandbox.v1.WriteFileStreamResponse
-	108, // 62: tenki.sandbox.v1.SandboxSessionDataPlaneServiceStatRequest.request:type_name -> tenki.sandbox.v1.StatRequest
-	109, // 63: tenki.sandbox.v1.SandboxSessionDataPlaneServiceStatResponse.response:type_name -> tenki.sandbox.v1.StatResponse
-	110, // 64: tenki.sandbox.v1.SandboxSessionDataPlaneServiceMkdirRequest.request:type_name -> tenki.sandbox.v1.MkdirRequest
-	111, // 65: tenki.sandbox.v1.SandboxSessionDataPlaneServiceMkdirResponse.response:type_name -> tenki.sandbox.v1.MkdirResponse
-	112, // 66: tenki.sandbox.v1.SandboxSessionDataPlaneServiceRemoveRequest.request:type_name -> tenki.sandbox.v1.RemoveRequest
-	113, // 67: tenki.sandbox.v1.SandboxSessionDataPlaneServiceRemoveResponse.response:type_name -> tenki.sandbox.v1.RemoveResponse
-	114, // 68: tenki.sandbox.v1.SandboxSessionDataPlaneServiceListRequest.request:type_name -> tenki.sandbox.v1.ListRequest
-	115, // 69: tenki.sandbox.v1.SandboxSessionDataPlaneServiceListResponse.response:type_name -> tenki.sandbox.v1.ListResponse
-	14,  // 70: tenki.sandbox.v1.GetSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
-	14,  // 71: tenki.sandbox.v1.WaitSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
-	24,  // 72: tenki.sandbox.v1.WaitSessionResponse.credential:type_name -> tenki.sandbox.v1.SessionCredential
-	7,   // 73: tenki.sandbox.v1.WaitSessionResponse.route_status:type_name -> tenki.sandbox.v1.DataPlaneRouteStatus
-	14,  // 74: tenki.sandbox.v1.ListSessionsResponse.sessions:type_name -> tenki.sandbox.v1.SandboxSession
-	0,   // 75: tenki.sandbox.v1.ListWorkspaceSandboxesRequest.state:type_name -> tenki.sandbox.v1.SessionState
-	14,  // 76: tenki.sandbox.v1.ListWorkspaceSandboxesResponse.sessions:type_name -> tenki.sandbox.v1.SandboxSession
-	0,   // 77: tenki.sandbox.v1.ListProjectSandboxesRequest.state:type_name -> tenki.sandbox.v1.SessionState
-	215, // 78: tenki.sandbox.v1.UpdateSessionRequest.max_duration:type_name -> google.protobuf.Duration
-	14,  // 79: tenki.sandbox.v1.UpdateSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
-	14,  // 80: tenki.sandbox.v1.ListProjectSandboxesResponse.sessions:type_name -> tenki.sandbox.v1.SandboxSession
-	11,  // 81: tenki.sandbox.v1.CreateVolumeResponse.volume:type_name -> tenki.sandbox.v1.Volume
-	11,  // 82: tenki.sandbox.v1.GetVolumeResponse.volume:type_name -> tenki.sandbox.v1.Volume
-	13,  // 83: tenki.sandbox.v1.GetVolumeResponse.active_attachments:type_name -> tenki.sandbox.v1.VolumeAttachment
-	11,  // 84: tenki.sandbox.v1.ListVolumesResponse.volumes:type_name -> tenki.sandbox.v1.Volume
-	11,  // 85: tenki.sandbox.v1.ListProjectVolumesResponse.volumes:type_name -> tenki.sandbox.v1.Volume
-	11,  // 86: tenki.sandbox.v1.UpdateVolumeResponse.volume:type_name -> tenki.sandbox.v1.Volume
-	11,  // 87: tenki.sandbox.v1.ResizeVolumeResponse.volume:type_name -> tenki.sandbox.v1.Volume
-	12,  // 88: tenki.sandbox.v1.AttachVolumeRequest.volume:type_name -> tenki.sandbox.v1.VolumeMount
-	13,  // 89: tenki.sandbox.v1.AttachVolumeResponse.attachment:type_name -> tenki.sandbox.v1.VolumeAttachment
-	215, // 90: tenki.sandbox.v1.ExecuteCommandRequest.timeout:type_name -> google.protobuf.Duration
-	211, // 91: tenki.sandbox.v1.ExecuteCommandRequest.env:type_name -> tenki.sandbox.v1.ExecuteCommandRequest.EnvEntry
-	20,  // 92: tenki.sandbox.v1.ExecuteCommandResponse.execution:type_name -> tenki.sandbox.v1.CommandExecution
-	84,  // 93: tenki.sandbox.v1.DialRequest.open:type_name -> tenki.sandbox.v1.DialOpen
-	86,  // 94: tenki.sandbox.v1.DialResponse.opened:type_name -> tenki.sandbox.v1.DialOpened
-	87,  // 95: tenki.sandbox.v1.DialResponse.closed:type_name -> tenki.sandbox.v1.DialClosed
-	8,   // 96: tenki.sandbox.v1.DialClosed.reason:type_name -> tenki.sandbox.v1.DialClosed.Reason
-	89,  // 97: tenki.sandbox.v1.RunRequest.start:type_name -> tenki.sandbox.v1.RunStart
-	90,  // 98: tenki.sandbox.v1.RunRequest.signal:type_name -> tenki.sandbox.v1.RunSignal
-	212, // 99: tenki.sandbox.v1.RunStart.env:type_name -> tenki.sandbox.v1.RunStart.EnvEntry
-	9,   // 100: tenki.sandbox.v1.RunSignal.signal:type_name -> tenki.sandbox.v1.RunSignal.Sig
-	92,  // 101: tenki.sandbox.v1.RunResponse.started:type_name -> tenki.sandbox.v1.RunStarted
-	93,  // 102: tenki.sandbox.v1.RunResponse.exit:type_name -> tenki.sandbox.v1.RunExit
-	94,  // 103: tenki.sandbox.v1.RunResponse.flow:type_name -> tenki.sandbox.v1.RunFlowControl
-	213, // 104: tenki.sandbox.v1.GitOperationRequest.args:type_name -> tenki.sandbox.v1.GitOperationRequest.ArgsEntry
-	106, // 105: tenki.sandbox.v1.WriteFileStreamRequest.start:type_name -> tenki.sandbox.v1.WriteFileStreamStart
-	116, // 106: tenki.sandbox.v1.ListResponse.entries:type_name -> tenki.sandbox.v1.ListEntry
-	14,  // 107: tenki.sandbox.v1.PauseSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
-	14,  // 108: tenki.sandbox.v1.ResumeSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
-	14,  // 109: tenki.sandbox.v1.TerminateSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
-	14,  // 110: tenki.sandbox.v1.TerminateSessionsResponse.sessions:type_name -> tenki.sandbox.v1.SandboxSession
-	125, // 111: tenki.sandbox.v1.TerminateSessionsResponse.failures:type_name -> tenki.sandbox.v1.TerminateSessionFailure
-	215, // 112: tenki.sandbox.v1.ExtendSessionRequest.additional_duration:type_name -> google.protobuf.Duration
-	14,  // 113: tenki.sandbox.v1.ExtendSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
-	214, // 114: tenki.sandbox.v1.GetArtifactUploadUrlResponse.expires_at:type_name -> google.protobuf.Timestamp
-	214, // 115: tenki.sandbox.v1.GetArtifactDownloadUrlResponse.expires_at:type_name -> google.protobuf.Timestamp
-	214, // 116: tenki.sandbox.v1.ExposePortRequest.expires_at:type_name -> google.protobuf.Timestamp
-	214, // 117: tenki.sandbox.v1.ExposePortResponse.expires_at:type_name -> google.protobuf.Timestamp
-	135, // 118: tenki.sandbox.v1.HostPortTunnelRequest.open:type_name -> tenki.sandbox.v1.HostPortTunnelOpen
-	136, // 119: tenki.sandbox.v1.HostPortTunnelRequest.data:type_name -> tenki.sandbox.v1.HostPortTunnelData
-	137, // 120: tenki.sandbox.v1.HostPortTunnelRequest.half_close:type_name -> tenki.sandbox.v1.HostPortTunnelHalfClose
-	138, // 121: tenki.sandbox.v1.HostPortTunnelRequest.close:type_name -> tenki.sandbox.v1.HostPortTunnelClose
-	139, // 122: tenki.sandbox.v1.HostPortTunnelRequest.pong:type_name -> tenki.sandbox.v1.HostPortTunnelKeepalivePong
-	141, // 123: tenki.sandbox.v1.HostPortTunnelResponse.opened:type_name -> tenki.sandbox.v1.HostPortTunnelOpened
-	142, // 124: tenki.sandbox.v1.HostPortTunnelResponse.accept:type_name -> tenki.sandbox.v1.HostPortTunnelAccept
-	136, // 125: tenki.sandbox.v1.HostPortTunnelResponse.data:type_name -> tenki.sandbox.v1.HostPortTunnelData
-	137, // 126: tenki.sandbox.v1.HostPortTunnelResponse.half_close:type_name -> tenki.sandbox.v1.HostPortTunnelHalfClose
-	138, // 127: tenki.sandbox.v1.HostPortTunnelResponse.close:type_name -> tenki.sandbox.v1.HostPortTunnelClose
-	143, // 128: tenki.sandbox.v1.HostPortTunnelResponse.ping:type_name -> tenki.sandbox.v1.HostPortTunnelKeepalivePing
-	144, // 129: tenki.sandbox.v1.HostPortTunnelResponse.terminated:type_name -> tenki.sandbox.v1.HostPortTunnelTerminated
-	10,  // 130: tenki.sandbox.v1.HostPortTunnelTerminated.reason:type_name -> tenki.sandbox.v1.HostPortTunnelTerminated.Reason
-	214, // 131: tenki.sandbox.v1.OpenPreviewRequest.expires_at:type_name -> google.protobuf.Timestamp
-	214, // 132: tenki.sandbox.v1.OpenPreviewResponse.expires_at:type_name -> google.protobuf.Timestamp
-	214, // 133: tenki.sandbox.v1.TouchPreviewResponse.last_accessed_at:type_name -> google.protobuf.Timestamp
-	214, // 134: tenki.sandbox.v1.ReportSessionActivityResponse.last_activity_at:type_name -> google.protobuf.Timestamp
-	214, // 135: tenki.sandbox.v1.PortExposure.expires_at:type_name -> google.protobuf.Timestamp
-	154, // 136: tenki.sandbox.v1.ListExposedPortsResponse.ports:type_name -> tenki.sandbox.v1.PortExposure
-	19,  // 137: tenki.sandbox.v1.CreatePreviewUrlResponse.preview_url:type_name -> tenki.sandbox.v1.PreviewUrl
-	19,  // 138: tenki.sandbox.v1.BindPreviewUrlResponse.preview_url:type_name -> tenki.sandbox.v1.PreviewUrl
-	19,  // 139: tenki.sandbox.v1.UnbindPreviewUrlResponse.preview_url:type_name -> tenki.sandbox.v1.PreviewUrl
-	19,  // 140: tenki.sandbox.v1.ListPreviewUrlsResponse.preview_urls:type_name -> tenki.sandbox.v1.PreviewUrl
-	19,  // 141: tenki.sandbox.v1.GetPreviewUrlResponse.preview_url:type_name -> tenki.sandbox.v1.PreviewUrl
-	214, // 142: tenki.sandbox.v1.ResolvePreviewTokenResponse.expires_at:type_name -> google.protobuf.Timestamp
-	214, // 143: tenki.sandbox.v1.CreateSnapshotRequest.expires_at:type_name -> google.protobuf.Timestamp
-	15,  // 144: tenki.sandbox.v1.CreateSnapshotResponse.snapshot:type_name -> tenki.sandbox.v1.Snapshot
-	15,  // 145: tenki.sandbox.v1.GetSnapshotResponse.snapshot:type_name -> tenki.sandbox.v1.Snapshot
-	214, // 146: tenki.sandbox.v1.GetSnapshotDownloadURLResponse.expires_at:type_name -> google.protobuf.Timestamp
-	15,  // 147: tenki.sandbox.v1.ListSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
-	15,  // 148: tenki.sandbox.v1.ListSessionSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
-	15,  // 149: tenki.sandbox.v1.ListDanglingSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
-	15,  // 150: tenki.sandbox.v1.ListWorkspaceSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
-	15,  // 151: tenki.sandbox.v1.ListProjectSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
-	17,  // 152: tenki.sandbox.v1.GetWorkspaceSandboxUsageResponse.limits:type_name -> tenki.sandbox.v1.WorkspaceSandboxUsageLimit
-	16,  // 153: tenki.sandbox.v1.GetWorkspaceSandboxSettingsResponse.settings:type_name -> tenki.sandbox.v1.WorkspaceSandboxSettings
-	215, // 154: tenki.sandbox.v1.UpdateWorkspaceSandboxSettingsRequest.pause_retention:type_name -> google.protobuf.Duration
-	215, // 155: tenki.sandbox.v1.UpdateWorkspaceSandboxSettingsRequest.snapshot_retention:type_name -> google.protobuf.Duration
-	16,  // 156: tenki.sandbox.v1.UpdateWorkspaceSandboxSettingsResponse.settings:type_name -> tenki.sandbox.v1.WorkspaceSandboxSettings
-	18,  // 157: tenki.sandbox.v1.GetWorkspaceSnapshotRetentionSettingsResponse.settings:type_name -> tenki.sandbox.v1.WorkspaceSnapshotRetentionSettings
-	215, // 158: tenki.sandbox.v1.UpdateWorkspaceSnapshotRetentionSettingsRequest.pause_retention:type_name -> google.protobuf.Duration
-	215, // 159: tenki.sandbox.v1.UpdateWorkspaceSnapshotRetentionSettingsRequest.snapshot_retention:type_name -> google.protobuf.Duration
-	18,  // 160: tenki.sandbox.v1.UpdateWorkspaceSnapshotRetentionSettingsResponse.settings:type_name -> tenki.sandbox.v1.WorkspaceSnapshotRetentionSettings
-	15,  // 161: tenki.sandbox.v1.DeleteSnapshotResponse.snapshot:type_name -> tenki.sandbox.v1.Snapshot
-	214, // 162: tenki.sandbox.v1.UpdateSnapshotRequest.expires_at:type_name -> google.protobuf.Timestamp
-	15,  // 163: tenki.sandbox.v1.UpdateSnapshotResponse.snapshot:type_name -> tenki.sandbox.v1.Snapshot
-	204, // 164: tenki.sandbox.v1.WhoAmIResponse.workspaces:type_name -> tenki.sandbox.v1.WhoAmIWorkspace
-	205, // 165: tenki.sandbox.v1.WhoAmIWorkspace.projects:type_name -> tenki.sandbox.v1.WhoAmIProject
-	21,  // 166: tenki.sandbox.v1.SandboxService.CreateSession:input_type -> tenki.sandbox.v1.CreateSessionRequest
-	25,  // 167: tenki.sandbox.v1.SandboxService.CreateSessionCredential:input_type -> tenki.sandbox.v1.CreateSessionCredentialRequest
-	49,  // 168: tenki.sandbox.v1.SandboxService.GetSession:input_type -> tenki.sandbox.v1.GetSessionRequest
-	51,  // 169: tenki.sandbox.v1.SandboxService.WaitSession:input_type -> tenki.sandbox.v1.WaitSessionRequest
-	53,  // 170: tenki.sandbox.v1.SandboxService.ListSessions:input_type -> tenki.sandbox.v1.ListSessionsRequest
-	55,  // 171: tenki.sandbox.v1.SandboxService.ListWorkspaceSandboxes:input_type -> tenki.sandbox.v1.ListWorkspaceSandboxesRequest
-	57,  // 172: tenki.sandbox.v1.SandboxService.ListProjectSandboxes:input_type -> tenki.sandbox.v1.ListProjectSandboxesRequest
-	58,  // 173: tenki.sandbox.v1.SandboxService.UpdateSession:input_type -> tenki.sandbox.v1.UpdateSessionRequest
-	61,  // 174: tenki.sandbox.v1.SandboxService.CreateVolume:input_type -> tenki.sandbox.v1.CreateVolumeRequest
-	63,  // 175: tenki.sandbox.v1.SandboxService.GetVolume:input_type -> tenki.sandbox.v1.GetVolumeRequest
-	65,  // 176: tenki.sandbox.v1.SandboxService.ListVolumes:input_type -> tenki.sandbox.v1.ListVolumesRequest
-	67,  // 177: tenki.sandbox.v1.SandboxService.ListProjectVolumes:input_type -> tenki.sandbox.v1.ListProjectVolumesRequest
-	71,  // 178: tenki.sandbox.v1.SandboxService.UpdateVolume:input_type -> tenki.sandbox.v1.UpdateVolumeRequest
-	69,  // 179: tenki.sandbox.v1.SandboxService.DeleteVolume:input_type -> tenki.sandbox.v1.DeleteVolumeRequest
-	73,  // 180: tenki.sandbox.v1.SandboxService.ResizeVolume:input_type -> tenki.sandbox.v1.ResizeVolumeRequest
-	75,  // 181: tenki.sandbox.v1.SandboxService.AttachVolume:input_type -> tenki.sandbox.v1.AttachVolumeRequest
-	77,  // 182: tenki.sandbox.v1.SandboxService.DetachVolume:input_type -> tenki.sandbox.v1.DetachVolumeRequest
-	79,  // 183: tenki.sandbox.v1.SandboxService.ExecuteCommand:input_type -> tenki.sandbox.v1.ExecuteCommandRequest
-	81,  // 184: tenki.sandbox.v1.SandboxService.StreamCommandOutput:input_type -> tenki.sandbox.v1.StreamCommandOutputRequest
-	97,  // 185: tenki.sandbox.v1.SandboxService.GitOperation:input_type -> tenki.sandbox.v1.GitOperationRequest
-	117, // 186: tenki.sandbox.v1.SandboxService.PauseSession:input_type -> tenki.sandbox.v1.PauseSessionRequest
-	119, // 187: tenki.sandbox.v1.SandboxService.ResumeSession:input_type -> tenki.sandbox.v1.ResumeSessionRequest
-	121, // 188: tenki.sandbox.v1.SandboxService.TerminateSession:input_type -> tenki.sandbox.v1.TerminateSessionRequest
-	123, // 189: tenki.sandbox.v1.SandboxService.TerminateSessions:input_type -> tenki.sandbox.v1.TerminateSessionsRequest
-	126, // 190: tenki.sandbox.v1.SandboxService.ExtendSession:input_type -> tenki.sandbox.v1.ExtendSessionRequest
-	128, // 191: tenki.sandbox.v1.SandboxService.GetArtifactUploadUrl:input_type -> tenki.sandbox.v1.GetArtifactUploadUrlRequest
-	130, // 192: tenki.sandbox.v1.SandboxService.GetArtifactDownloadUrl:input_type -> tenki.sandbox.v1.GetArtifactDownloadUrlRequest
-	132, // 193: tenki.sandbox.v1.SandboxService.ExposePort:input_type -> tenki.sandbox.v1.ExposePortRequest
-	145, // 194: tenki.sandbox.v1.SandboxService.OpenPreview:input_type -> tenki.sandbox.v1.OpenPreviewRequest
-	147, // 195: tenki.sandbox.v1.SandboxService.TouchPreview:input_type -> tenki.sandbox.v1.TouchPreviewRequest
-	149, // 196: tenki.sandbox.v1.SandboxService.ReportSessionActivity:input_type -> tenki.sandbox.v1.ReportSessionActivityRequest
-	151, // 197: tenki.sandbox.v1.SandboxService.UnexposePort:input_type -> tenki.sandbox.v1.UnexposePortRequest
-	153, // 198: tenki.sandbox.v1.SandboxService.ListExposedPorts:input_type -> tenki.sandbox.v1.ListExposedPortsRequest
-	156, // 199: tenki.sandbox.v1.SandboxService.CreatePreviewUrl:input_type -> tenki.sandbox.v1.CreatePreviewUrlRequest
-	158, // 200: tenki.sandbox.v1.SandboxService.DeletePreviewUrl:input_type -> tenki.sandbox.v1.DeletePreviewUrlRequest
-	160, // 201: tenki.sandbox.v1.SandboxService.BindPreviewUrl:input_type -> tenki.sandbox.v1.BindPreviewUrlRequest
-	162, // 202: tenki.sandbox.v1.SandboxService.UnbindPreviewUrl:input_type -> tenki.sandbox.v1.UnbindPreviewUrlRequest
-	164, // 203: tenki.sandbox.v1.SandboxService.ListPreviewUrls:input_type -> tenki.sandbox.v1.ListPreviewUrlsRequest
-	166, // 204: tenki.sandbox.v1.SandboxService.GetPreviewUrl:input_type -> tenki.sandbox.v1.GetPreviewUrlRequest
-	168, // 205: tenki.sandbox.v1.SandboxService.ResolvePreviewToken:input_type -> tenki.sandbox.v1.ResolvePreviewTokenRequest
-	170, // 206: tenki.sandbox.v1.SandboxService.UpdateSSHAuthorizedKeys:input_type -> tenki.sandbox.v1.UpdateSSHAuthorizedKeysRequest
-	172, // 207: tenki.sandbox.v1.SandboxService.CreateSnapshot:input_type -> tenki.sandbox.v1.CreateSnapshotRequest
-	174, // 208: tenki.sandbox.v1.SandboxService.GetSnapshot:input_type -> tenki.sandbox.v1.GetSnapshotRequest
-	176, // 209: tenki.sandbox.v1.SandboxService.GetSnapshotDownloadURL:input_type -> tenki.sandbox.v1.GetSnapshotDownloadURLRequest
-	178, // 210: tenki.sandbox.v1.SandboxService.ListSnapshots:input_type -> tenki.sandbox.v1.ListSnapshotsRequest
-	180, // 211: tenki.sandbox.v1.SandboxService.ListSessionSnapshots:input_type -> tenki.sandbox.v1.ListSessionSnapshotsRequest
-	182, // 212: tenki.sandbox.v1.SandboxService.ListDanglingSnapshots:input_type -> tenki.sandbox.v1.ListDanglingSnapshotsRequest
-	184, // 213: tenki.sandbox.v1.SandboxService.ListWorkspaceSnapshots:input_type -> tenki.sandbox.v1.ListWorkspaceSnapshotsRequest
-	186, // 214: tenki.sandbox.v1.SandboxService.ListProjectSnapshots:input_type -> tenki.sandbox.v1.ListProjectSnapshotsRequest
-	188, // 215: tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxUsage:input_type -> tenki.sandbox.v1.GetWorkspaceSandboxUsageRequest
-	190, // 216: tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxSettings:input_type -> tenki.sandbox.v1.GetWorkspaceSandboxSettingsRequest
-	192, // 217: tenki.sandbox.v1.SandboxService.UpdateWorkspaceSandboxSettings:input_type -> tenki.sandbox.v1.UpdateWorkspaceSandboxSettingsRequest
-	194, // 218: tenki.sandbox.v1.SandboxService.GetWorkspaceSnapshotRetentionSettings:input_type -> tenki.sandbox.v1.GetWorkspaceSnapshotRetentionSettingsRequest
-	196, // 219: tenki.sandbox.v1.SandboxService.UpdateWorkspaceSnapshotRetentionSettings:input_type -> tenki.sandbox.v1.UpdateWorkspaceSnapshotRetentionSettingsRequest
-	200, // 220: tenki.sandbox.v1.SandboxService.UpdateSnapshot:input_type -> tenki.sandbox.v1.UpdateSnapshotRequest
-	198, // 221: tenki.sandbox.v1.SandboxService.DeleteSnapshot:input_type -> tenki.sandbox.v1.DeleteSnapshotRequest
-	217, // 222: tenki.sandbox.v1.SandboxService.CreateTemplate:input_type -> tenki.sandbox.v1.CreateTemplateRequest
-	218, // 223: tenki.sandbox.v1.SandboxService.GetTemplate:input_type -> tenki.sandbox.v1.GetTemplateRequest
-	219, // 224: tenki.sandbox.v1.SandboxService.ListTemplates:input_type -> tenki.sandbox.v1.ListTemplatesRequest
-	220, // 225: tenki.sandbox.v1.SandboxService.ListProjectTemplates:input_type -> tenki.sandbox.v1.ListProjectTemplatesRequest
-	221, // 226: tenki.sandbox.v1.SandboxService.UpdateTemplate:input_type -> tenki.sandbox.v1.UpdateTemplateRequest
-	222, // 227: tenki.sandbox.v1.SandboxService.DeleteTemplate:input_type -> tenki.sandbox.v1.DeleteTemplateRequest
-	223, // 228: tenki.sandbox.v1.SandboxService.BuildTemplate:input_type -> tenki.sandbox.v1.BuildTemplateRequest
-	224, // 229: tenki.sandbox.v1.SandboxService.CancelTemplateBuild:input_type -> tenki.sandbox.v1.CancelTemplateBuildRequest
-	225, // 230: tenki.sandbox.v1.SandboxService.GetTemplateBuild:input_type -> tenki.sandbox.v1.GetTemplateBuildRequest
-	226, // 231: tenki.sandbox.v1.SandboxService.ListActiveTemplateBuilds:input_type -> tenki.sandbox.v1.ListActiveTemplateBuildsRequest
-	227, // 232: tenki.sandbox.v1.SandboxService.PublishRegistryImage:input_type -> tenki.sandbox.v1.PublishRegistryImageRequest
-	228, // 233: tenki.sandbox.v1.SandboxService.SetRegistryImageVisibility:input_type -> tenki.sandbox.v1.SetRegistryImageVisibilityRequest
-	229, // 234: tenki.sandbox.v1.SandboxService.DeleteRegistryImage:input_type -> tenki.sandbox.v1.DeleteRegistryImageRequest
-	230, // 235: tenki.sandbox.v1.SandboxService.DeleteRegistryImageVersion:input_type -> tenki.sandbox.v1.DeleteRegistryImageVersionRequest
-	231, // 236: tenki.sandbox.v1.SandboxService.ListRegistryImages:input_type -> tenki.sandbox.v1.ListRegistryImagesRequest
-	232, // 237: tenki.sandbox.v1.SandboxService.GetRegistryImage:input_type -> tenki.sandbox.v1.GetRegistryImageRequest
-	233, // 238: tenki.sandbox.v1.SandboxService.ResolveRegistryRef:input_type -> tenki.sandbox.v1.ResolveRegistryRefRequest
-	234, // 239: tenki.sandbox.v1.SandboxService.ShareImage:input_type -> tenki.sandbox.v1.ShareImageRequest
-	235, // 240: tenki.sandbox.v1.SandboxService.RevokeRegistryShareGrant:input_type -> tenki.sandbox.v1.RevokeRegistryShareGrantRequest
-	236, // 241: tenki.sandbox.v1.SandboxService.ListRegistryShareGrants:input_type -> tenki.sandbox.v1.ListRegistryShareGrantsRequest
-	237, // 242: tenki.sandbox.v1.SandboxService.UnshareRegistryImage:input_type -> tenki.sandbox.v1.UnshareRegistryImageRequest
-	202, // 243: tenki.sandbox.v1.SandboxService.WhoAmI:input_type -> tenki.sandbox.v1.WhoAmIRequest
-	27,  // 244: tenki.sandbox.v1.SandboxSessionDataPlaneService.Run:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceRunRequest
-	29,  // 245: tenki.sandbox.v1.SandboxSessionDataPlaneService.Dial:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceDialRequest
-	31,  // 246: tenki.sandbox.v1.SandboxSessionDataPlaneService.HostPortTunnel:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceHostPortTunnelRequest
-	33,  // 247: tenki.sandbox.v1.SandboxSessionDataPlaneService.ReadFile:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileRequest
-	35,  // 248: tenki.sandbox.v1.SandboxSessionDataPlaneService.WriteFile:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileRequest
-	37,  // 249: tenki.sandbox.v1.SandboxSessionDataPlaneService.ReadFileStream:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileStreamRequest
-	39,  // 250: tenki.sandbox.v1.SandboxSessionDataPlaneService.WriteFileStream:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileStreamRequest
-	41,  // 251: tenki.sandbox.v1.SandboxSessionDataPlaneService.Stat:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceStatRequest
-	43,  // 252: tenki.sandbox.v1.SandboxSessionDataPlaneService.Mkdir:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceMkdirRequest
-	45,  // 253: tenki.sandbox.v1.SandboxSessionDataPlaneService.Remove:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceRemoveRequest
-	47,  // 254: tenki.sandbox.v1.SandboxSessionDataPlaneService.List:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceListRequest
-	22,  // 255: tenki.sandbox.v1.SandboxService.CreateSession:output_type -> tenki.sandbox.v1.CreateSessionResponse
-	26,  // 256: tenki.sandbox.v1.SandboxService.CreateSessionCredential:output_type -> tenki.sandbox.v1.CreateSessionCredentialResponse
-	50,  // 257: tenki.sandbox.v1.SandboxService.GetSession:output_type -> tenki.sandbox.v1.GetSessionResponse
-	52,  // 258: tenki.sandbox.v1.SandboxService.WaitSession:output_type -> tenki.sandbox.v1.WaitSessionResponse
-	54,  // 259: tenki.sandbox.v1.SandboxService.ListSessions:output_type -> tenki.sandbox.v1.ListSessionsResponse
-	56,  // 260: tenki.sandbox.v1.SandboxService.ListWorkspaceSandboxes:output_type -> tenki.sandbox.v1.ListWorkspaceSandboxesResponse
-	60,  // 261: tenki.sandbox.v1.SandboxService.ListProjectSandboxes:output_type -> tenki.sandbox.v1.ListProjectSandboxesResponse
-	59,  // 262: tenki.sandbox.v1.SandboxService.UpdateSession:output_type -> tenki.sandbox.v1.UpdateSessionResponse
-	62,  // 263: tenki.sandbox.v1.SandboxService.CreateVolume:output_type -> tenki.sandbox.v1.CreateVolumeResponse
-	64,  // 264: tenki.sandbox.v1.SandboxService.GetVolume:output_type -> tenki.sandbox.v1.GetVolumeResponse
-	66,  // 265: tenki.sandbox.v1.SandboxService.ListVolumes:output_type -> tenki.sandbox.v1.ListVolumesResponse
-	68,  // 266: tenki.sandbox.v1.SandboxService.ListProjectVolumes:output_type -> tenki.sandbox.v1.ListProjectVolumesResponse
-	72,  // 267: tenki.sandbox.v1.SandboxService.UpdateVolume:output_type -> tenki.sandbox.v1.UpdateVolumeResponse
-	70,  // 268: tenki.sandbox.v1.SandboxService.DeleteVolume:output_type -> tenki.sandbox.v1.DeleteVolumeResponse
-	74,  // 269: tenki.sandbox.v1.SandboxService.ResizeVolume:output_type -> tenki.sandbox.v1.ResizeVolumeResponse
-	76,  // 270: tenki.sandbox.v1.SandboxService.AttachVolume:output_type -> tenki.sandbox.v1.AttachVolumeResponse
-	78,  // 271: tenki.sandbox.v1.SandboxService.DetachVolume:output_type -> tenki.sandbox.v1.DetachVolumeResponse
-	80,  // 272: tenki.sandbox.v1.SandboxService.ExecuteCommand:output_type -> tenki.sandbox.v1.ExecuteCommandResponse
-	82,  // 273: tenki.sandbox.v1.SandboxService.StreamCommandOutput:output_type -> tenki.sandbox.v1.StreamCommandOutputResponse
-	98,  // 274: tenki.sandbox.v1.SandboxService.GitOperation:output_type -> tenki.sandbox.v1.GitOperationResponse
-	118, // 275: tenki.sandbox.v1.SandboxService.PauseSession:output_type -> tenki.sandbox.v1.PauseSessionResponse
-	120, // 276: tenki.sandbox.v1.SandboxService.ResumeSession:output_type -> tenki.sandbox.v1.ResumeSessionResponse
-	122, // 277: tenki.sandbox.v1.SandboxService.TerminateSession:output_type -> tenki.sandbox.v1.TerminateSessionResponse
-	124, // 278: tenki.sandbox.v1.SandboxService.TerminateSessions:output_type -> tenki.sandbox.v1.TerminateSessionsResponse
-	127, // 279: tenki.sandbox.v1.SandboxService.ExtendSession:output_type -> tenki.sandbox.v1.ExtendSessionResponse
-	129, // 280: tenki.sandbox.v1.SandboxService.GetArtifactUploadUrl:output_type -> tenki.sandbox.v1.GetArtifactUploadUrlResponse
-	131, // 281: tenki.sandbox.v1.SandboxService.GetArtifactDownloadUrl:output_type -> tenki.sandbox.v1.GetArtifactDownloadUrlResponse
-	133, // 282: tenki.sandbox.v1.SandboxService.ExposePort:output_type -> tenki.sandbox.v1.ExposePortResponse
-	146, // 283: tenki.sandbox.v1.SandboxService.OpenPreview:output_type -> tenki.sandbox.v1.OpenPreviewResponse
-	148, // 284: tenki.sandbox.v1.SandboxService.TouchPreview:output_type -> tenki.sandbox.v1.TouchPreviewResponse
-	150, // 285: tenki.sandbox.v1.SandboxService.ReportSessionActivity:output_type -> tenki.sandbox.v1.ReportSessionActivityResponse
-	152, // 286: tenki.sandbox.v1.SandboxService.UnexposePort:output_type -> tenki.sandbox.v1.UnexposePortResponse
-	155, // 287: tenki.sandbox.v1.SandboxService.ListExposedPorts:output_type -> tenki.sandbox.v1.ListExposedPortsResponse
-	157, // 288: tenki.sandbox.v1.SandboxService.CreatePreviewUrl:output_type -> tenki.sandbox.v1.CreatePreviewUrlResponse
-	159, // 289: tenki.sandbox.v1.SandboxService.DeletePreviewUrl:output_type -> tenki.sandbox.v1.DeletePreviewUrlResponse
-	161, // 290: tenki.sandbox.v1.SandboxService.BindPreviewUrl:output_type -> tenki.sandbox.v1.BindPreviewUrlResponse
-	163, // 291: tenki.sandbox.v1.SandboxService.UnbindPreviewUrl:output_type -> tenki.sandbox.v1.UnbindPreviewUrlResponse
-	165, // 292: tenki.sandbox.v1.SandboxService.ListPreviewUrls:output_type -> tenki.sandbox.v1.ListPreviewUrlsResponse
-	167, // 293: tenki.sandbox.v1.SandboxService.GetPreviewUrl:output_type -> tenki.sandbox.v1.GetPreviewUrlResponse
-	169, // 294: tenki.sandbox.v1.SandboxService.ResolvePreviewToken:output_type -> tenki.sandbox.v1.ResolvePreviewTokenResponse
-	171, // 295: tenki.sandbox.v1.SandboxService.UpdateSSHAuthorizedKeys:output_type -> tenki.sandbox.v1.UpdateSSHAuthorizedKeysResponse
-	173, // 296: tenki.sandbox.v1.SandboxService.CreateSnapshot:output_type -> tenki.sandbox.v1.CreateSnapshotResponse
-	175, // 297: tenki.sandbox.v1.SandboxService.GetSnapshot:output_type -> tenki.sandbox.v1.GetSnapshotResponse
-	177, // 298: tenki.sandbox.v1.SandboxService.GetSnapshotDownloadURL:output_type -> tenki.sandbox.v1.GetSnapshotDownloadURLResponse
-	179, // 299: tenki.sandbox.v1.SandboxService.ListSnapshots:output_type -> tenki.sandbox.v1.ListSnapshotsResponse
-	181, // 300: tenki.sandbox.v1.SandboxService.ListSessionSnapshots:output_type -> tenki.sandbox.v1.ListSessionSnapshotsResponse
-	183, // 301: tenki.sandbox.v1.SandboxService.ListDanglingSnapshots:output_type -> tenki.sandbox.v1.ListDanglingSnapshotsResponse
-	185, // 302: tenki.sandbox.v1.SandboxService.ListWorkspaceSnapshots:output_type -> tenki.sandbox.v1.ListWorkspaceSnapshotsResponse
-	187, // 303: tenki.sandbox.v1.SandboxService.ListProjectSnapshots:output_type -> tenki.sandbox.v1.ListProjectSnapshotsResponse
-	189, // 304: tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxUsage:output_type -> tenki.sandbox.v1.GetWorkspaceSandboxUsageResponse
-	191, // 305: tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxSettings:output_type -> tenki.sandbox.v1.GetWorkspaceSandboxSettingsResponse
-	193, // 306: tenki.sandbox.v1.SandboxService.UpdateWorkspaceSandboxSettings:output_type -> tenki.sandbox.v1.UpdateWorkspaceSandboxSettingsResponse
-	195, // 307: tenki.sandbox.v1.SandboxService.GetWorkspaceSnapshotRetentionSettings:output_type -> tenki.sandbox.v1.GetWorkspaceSnapshotRetentionSettingsResponse
-	197, // 308: tenki.sandbox.v1.SandboxService.UpdateWorkspaceSnapshotRetentionSettings:output_type -> tenki.sandbox.v1.UpdateWorkspaceSnapshotRetentionSettingsResponse
-	201, // 309: tenki.sandbox.v1.SandboxService.UpdateSnapshot:output_type -> tenki.sandbox.v1.UpdateSnapshotResponse
-	199, // 310: tenki.sandbox.v1.SandboxService.DeleteSnapshot:output_type -> tenki.sandbox.v1.DeleteSnapshotResponse
-	238, // 311: tenki.sandbox.v1.SandboxService.CreateTemplate:output_type -> tenki.sandbox.v1.CreateTemplateResponse
-	239, // 312: tenki.sandbox.v1.SandboxService.GetTemplate:output_type -> tenki.sandbox.v1.GetTemplateResponse
-	240, // 313: tenki.sandbox.v1.SandboxService.ListTemplates:output_type -> tenki.sandbox.v1.ListTemplatesResponse
-	241, // 314: tenki.sandbox.v1.SandboxService.ListProjectTemplates:output_type -> tenki.sandbox.v1.ListProjectTemplatesResponse
-	242, // 315: tenki.sandbox.v1.SandboxService.UpdateTemplate:output_type -> tenki.sandbox.v1.UpdateTemplateResponse
-	243, // 316: tenki.sandbox.v1.SandboxService.DeleteTemplate:output_type -> tenki.sandbox.v1.DeleteTemplateResponse
-	244, // 317: tenki.sandbox.v1.SandboxService.BuildTemplate:output_type -> tenki.sandbox.v1.BuildTemplateResponse
-	245, // 318: tenki.sandbox.v1.SandboxService.CancelTemplateBuild:output_type -> tenki.sandbox.v1.CancelTemplateBuildResponse
-	246, // 319: tenki.sandbox.v1.SandboxService.GetTemplateBuild:output_type -> tenki.sandbox.v1.GetTemplateBuildResponse
-	247, // 320: tenki.sandbox.v1.SandboxService.ListActiveTemplateBuilds:output_type -> tenki.sandbox.v1.ListActiveTemplateBuildsResponse
-	248, // 321: tenki.sandbox.v1.SandboxService.PublishRegistryImage:output_type -> tenki.sandbox.v1.PublishRegistryImageResponse
-	249, // 322: tenki.sandbox.v1.SandboxService.SetRegistryImageVisibility:output_type -> tenki.sandbox.v1.SetRegistryImageVisibilityResponse
-	250, // 323: tenki.sandbox.v1.SandboxService.DeleteRegistryImage:output_type -> tenki.sandbox.v1.DeleteRegistryImageResponse
-	251, // 324: tenki.sandbox.v1.SandboxService.DeleteRegistryImageVersion:output_type -> tenki.sandbox.v1.DeleteRegistryImageVersionResponse
-	252, // 325: tenki.sandbox.v1.SandboxService.ListRegistryImages:output_type -> tenki.sandbox.v1.ListRegistryImagesResponse
-	253, // 326: tenki.sandbox.v1.SandboxService.GetRegistryImage:output_type -> tenki.sandbox.v1.GetRegistryImageResponse
-	254, // 327: tenki.sandbox.v1.SandboxService.ResolveRegistryRef:output_type -> tenki.sandbox.v1.ResolveRegistryRefResponse
-	255, // 328: tenki.sandbox.v1.SandboxService.ShareImage:output_type -> tenki.sandbox.v1.ShareImageResponse
-	256, // 329: tenki.sandbox.v1.SandboxService.RevokeRegistryShareGrant:output_type -> tenki.sandbox.v1.RevokeRegistryShareGrantResponse
-	257, // 330: tenki.sandbox.v1.SandboxService.ListRegistryShareGrants:output_type -> tenki.sandbox.v1.ListRegistryShareGrantsResponse
-	258, // 331: tenki.sandbox.v1.SandboxService.UnshareRegistryImage:output_type -> tenki.sandbox.v1.UnshareRegistryImageResponse
-	203, // 332: tenki.sandbox.v1.SandboxService.WhoAmI:output_type -> tenki.sandbox.v1.WhoAmIResponse
-	28,  // 333: tenki.sandbox.v1.SandboxSessionDataPlaneService.Run:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceRunResponse
-	30,  // 334: tenki.sandbox.v1.SandboxSessionDataPlaneService.Dial:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceDialResponse
-	32,  // 335: tenki.sandbox.v1.SandboxSessionDataPlaneService.HostPortTunnel:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceHostPortTunnelResponse
-	34,  // 336: tenki.sandbox.v1.SandboxSessionDataPlaneService.ReadFile:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileResponse
-	36,  // 337: tenki.sandbox.v1.SandboxSessionDataPlaneService.WriteFile:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileResponse
-	38,  // 338: tenki.sandbox.v1.SandboxSessionDataPlaneService.ReadFileStream:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileStreamResponse
-	40,  // 339: tenki.sandbox.v1.SandboxSessionDataPlaneService.WriteFileStream:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileStreamResponse
-	42,  // 340: tenki.sandbox.v1.SandboxSessionDataPlaneService.Stat:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceStatResponse
-	44,  // 341: tenki.sandbox.v1.SandboxSessionDataPlaneService.Mkdir:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceMkdirResponse
-	46,  // 342: tenki.sandbox.v1.SandboxSessionDataPlaneService.Remove:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceRemoveResponse
-	48,  // 343: tenki.sandbox.v1.SandboxSessionDataPlaneService.List:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceListResponse
-	255, // [255:344] is the sub-list for method output_type
-	166, // [166:255] is the sub-list for method input_type
-	166, // [166:166] is the sub-list for extension type_name
-	166, // [166:166] is the sub-list for extension extendee
-	0,   // [0:166] is the sub-list for field type_name
+	214, // 23: tenki.sandbox.v1.Snapshot.balance_paused_at:type_name -> google.protobuf.Timestamp
+	215, // 24: tenki.sandbox.v1.WorkspaceSandboxSettings.pause_retention:type_name -> google.protobuf.Duration
+	215, // 25: tenki.sandbox.v1.WorkspaceSandboxSettings.snapshot_retention:type_name -> google.protobuf.Duration
+	6,   // 26: tenki.sandbox.v1.WorkspaceSandboxUsageLimit.unit:type_name -> tenki.sandbox.v1.SandboxUsageUnit
+	215, // 27: tenki.sandbox.v1.WorkspaceSnapshotRetentionSettings.pause_retention:type_name -> google.protobuf.Duration
+	215, // 28: tenki.sandbox.v1.WorkspaceSnapshotRetentionSettings.snapshot_retention:type_name -> google.protobuf.Duration
+	214, // 29: tenki.sandbox.v1.PreviewUrl.created_at:type_name -> google.protobuf.Timestamp
+	214, // 30: tenki.sandbox.v1.PreviewUrl.updated_at:type_name -> google.protobuf.Timestamp
+	214, // 31: tenki.sandbox.v1.PreviewUrl.last_accessed_at:type_name -> google.protobuf.Timestamp
+	1,   // 32: tenki.sandbox.v1.CommandExecution.status:type_name -> tenki.sandbox.v1.CommandStatus
+	214, // 33: tenki.sandbox.v1.CommandExecution.started_at:type_name -> google.protobuf.Timestamp
+	214, // 34: tenki.sandbox.v1.CommandExecution.ended_at:type_name -> google.protobuf.Timestamp
+	215, // 35: tenki.sandbox.v1.CreateSessionRequest.max_duration:type_name -> google.protobuf.Duration
+	207, // 36: tenki.sandbox.v1.CreateSessionRequest.metadata:type_name -> tenki.sandbox.v1.CreateSessionRequest.MetadataEntry
+	208, // 37: tenki.sandbox.v1.CreateSessionRequest.env:type_name -> tenki.sandbox.v1.CreateSessionRequest.EnvEntry
+	12,  // 38: tenki.sandbox.v1.CreateSessionRequest.volumes:type_name -> tenki.sandbox.v1.VolumeMount
+	215, // 39: tenki.sandbox.v1.CreateSessionRequest.pause_retention:type_name -> google.protobuf.Duration
+	209, // 40: tenki.sandbox.v1.CreateSessionRequest.setup_env:type_name -> tenki.sandbox.v1.CreateSessionRequest.SetupEnvEntry
+	210, // 41: tenki.sandbox.v1.CreateSessionRequest.setup_secrets:type_name -> tenki.sandbox.v1.CreateSessionRequest.SetupSecretsEntry
+	14,  // 42: tenki.sandbox.v1.CreateSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
+	24,  // 43: tenki.sandbox.v1.CreateSessionResponse.credential:type_name -> tenki.sandbox.v1.SessionCredential
+	7,   // 44: tenki.sandbox.v1.CreateSessionResponse.route_status:type_name -> tenki.sandbox.v1.DataPlaneRouteStatus
+	14,  // 45: tenki.sandbox.v1.TemplateRuntimeFailure.session:type_name -> tenki.sandbox.v1.SandboxSession
+	214, // 46: tenki.sandbox.v1.SessionCredential.expires_at:type_name -> google.protobuf.Timestamp
+	24,  // 47: tenki.sandbox.v1.CreateSessionCredentialResponse.credential:type_name -> tenki.sandbox.v1.SessionCredential
+	7,   // 48: tenki.sandbox.v1.CreateSessionCredentialResponse.route_status:type_name -> tenki.sandbox.v1.DataPlaneRouteStatus
+	88,  // 49: tenki.sandbox.v1.SandboxSessionDataPlaneServiceRunRequest.frame:type_name -> tenki.sandbox.v1.RunRequest
+	91,  // 50: tenki.sandbox.v1.SandboxSessionDataPlaneServiceRunResponse.frame:type_name -> tenki.sandbox.v1.RunResponse
+	83,  // 51: tenki.sandbox.v1.SandboxSessionDataPlaneServiceDialRequest.frame:type_name -> tenki.sandbox.v1.DialRequest
+	85,  // 52: tenki.sandbox.v1.SandboxSessionDataPlaneServiceDialResponse.frame:type_name -> tenki.sandbox.v1.DialResponse
+	134, // 53: tenki.sandbox.v1.SandboxSessionDataPlaneServiceHostPortTunnelRequest.frame:type_name -> tenki.sandbox.v1.HostPortTunnelRequest
+	140, // 54: tenki.sandbox.v1.SandboxSessionDataPlaneServiceHostPortTunnelResponse.frame:type_name -> tenki.sandbox.v1.HostPortTunnelResponse
+	101, // 55: tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileRequest.request:type_name -> tenki.sandbox.v1.ReadFileRequest
+	102, // 56: tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileResponse.response:type_name -> tenki.sandbox.v1.ReadFileResponse
+	99,  // 57: tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileRequest.request:type_name -> tenki.sandbox.v1.WriteFileRequest
+	100, // 58: tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileResponse.response:type_name -> tenki.sandbox.v1.WriteFileResponse
+	103, // 59: tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileStreamRequest.request:type_name -> tenki.sandbox.v1.ReadFileStreamRequest
+	104, // 60: tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileStreamResponse.response:type_name -> tenki.sandbox.v1.ReadFileStreamResponse
+	105, // 61: tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileStreamRequest.frame:type_name -> tenki.sandbox.v1.WriteFileStreamRequest
+	107, // 62: tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileStreamResponse.response:type_name -> tenki.sandbox.v1.WriteFileStreamResponse
+	108, // 63: tenki.sandbox.v1.SandboxSessionDataPlaneServiceStatRequest.request:type_name -> tenki.sandbox.v1.StatRequest
+	109, // 64: tenki.sandbox.v1.SandboxSessionDataPlaneServiceStatResponse.response:type_name -> tenki.sandbox.v1.StatResponse
+	110, // 65: tenki.sandbox.v1.SandboxSessionDataPlaneServiceMkdirRequest.request:type_name -> tenki.sandbox.v1.MkdirRequest
+	111, // 66: tenki.sandbox.v1.SandboxSessionDataPlaneServiceMkdirResponse.response:type_name -> tenki.sandbox.v1.MkdirResponse
+	112, // 67: tenki.sandbox.v1.SandboxSessionDataPlaneServiceRemoveRequest.request:type_name -> tenki.sandbox.v1.RemoveRequest
+	113, // 68: tenki.sandbox.v1.SandboxSessionDataPlaneServiceRemoveResponse.response:type_name -> tenki.sandbox.v1.RemoveResponse
+	114, // 69: tenki.sandbox.v1.SandboxSessionDataPlaneServiceListRequest.request:type_name -> tenki.sandbox.v1.ListRequest
+	115, // 70: tenki.sandbox.v1.SandboxSessionDataPlaneServiceListResponse.response:type_name -> tenki.sandbox.v1.ListResponse
+	14,  // 71: tenki.sandbox.v1.GetSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
+	14,  // 72: tenki.sandbox.v1.WaitSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
+	24,  // 73: tenki.sandbox.v1.WaitSessionResponse.credential:type_name -> tenki.sandbox.v1.SessionCredential
+	7,   // 74: tenki.sandbox.v1.WaitSessionResponse.route_status:type_name -> tenki.sandbox.v1.DataPlaneRouteStatus
+	14,  // 75: tenki.sandbox.v1.ListSessionsResponse.sessions:type_name -> tenki.sandbox.v1.SandboxSession
+	0,   // 76: tenki.sandbox.v1.ListWorkspaceSandboxesRequest.state:type_name -> tenki.sandbox.v1.SessionState
+	14,  // 77: tenki.sandbox.v1.ListWorkspaceSandboxesResponse.sessions:type_name -> tenki.sandbox.v1.SandboxSession
+	0,   // 78: tenki.sandbox.v1.ListProjectSandboxesRequest.state:type_name -> tenki.sandbox.v1.SessionState
+	215, // 79: tenki.sandbox.v1.UpdateSessionRequest.max_duration:type_name -> google.protobuf.Duration
+	14,  // 80: tenki.sandbox.v1.UpdateSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
+	14,  // 81: tenki.sandbox.v1.ListProjectSandboxesResponse.sessions:type_name -> tenki.sandbox.v1.SandboxSession
+	11,  // 82: tenki.sandbox.v1.CreateVolumeResponse.volume:type_name -> tenki.sandbox.v1.Volume
+	11,  // 83: tenki.sandbox.v1.GetVolumeResponse.volume:type_name -> tenki.sandbox.v1.Volume
+	13,  // 84: tenki.sandbox.v1.GetVolumeResponse.active_attachments:type_name -> tenki.sandbox.v1.VolumeAttachment
+	11,  // 85: tenki.sandbox.v1.ListVolumesResponse.volumes:type_name -> tenki.sandbox.v1.Volume
+	11,  // 86: tenki.sandbox.v1.ListProjectVolumesResponse.volumes:type_name -> tenki.sandbox.v1.Volume
+	11,  // 87: tenki.sandbox.v1.UpdateVolumeResponse.volume:type_name -> tenki.sandbox.v1.Volume
+	11,  // 88: tenki.sandbox.v1.ResizeVolumeResponse.volume:type_name -> tenki.sandbox.v1.Volume
+	12,  // 89: tenki.sandbox.v1.AttachVolumeRequest.volume:type_name -> tenki.sandbox.v1.VolumeMount
+	13,  // 90: tenki.sandbox.v1.AttachVolumeResponse.attachment:type_name -> tenki.sandbox.v1.VolumeAttachment
+	215, // 91: tenki.sandbox.v1.ExecuteCommandRequest.timeout:type_name -> google.protobuf.Duration
+	211, // 92: tenki.sandbox.v1.ExecuteCommandRequest.env:type_name -> tenki.sandbox.v1.ExecuteCommandRequest.EnvEntry
+	20,  // 93: tenki.sandbox.v1.ExecuteCommandResponse.execution:type_name -> tenki.sandbox.v1.CommandExecution
+	84,  // 94: tenki.sandbox.v1.DialRequest.open:type_name -> tenki.sandbox.v1.DialOpen
+	86,  // 95: tenki.sandbox.v1.DialResponse.opened:type_name -> tenki.sandbox.v1.DialOpened
+	87,  // 96: tenki.sandbox.v1.DialResponse.closed:type_name -> tenki.sandbox.v1.DialClosed
+	8,   // 97: tenki.sandbox.v1.DialClosed.reason:type_name -> tenki.sandbox.v1.DialClosed.Reason
+	89,  // 98: tenki.sandbox.v1.RunRequest.start:type_name -> tenki.sandbox.v1.RunStart
+	90,  // 99: tenki.sandbox.v1.RunRequest.signal:type_name -> tenki.sandbox.v1.RunSignal
+	212, // 100: tenki.sandbox.v1.RunStart.env:type_name -> tenki.sandbox.v1.RunStart.EnvEntry
+	9,   // 101: tenki.sandbox.v1.RunSignal.signal:type_name -> tenki.sandbox.v1.RunSignal.Sig
+	92,  // 102: tenki.sandbox.v1.RunResponse.started:type_name -> tenki.sandbox.v1.RunStarted
+	93,  // 103: tenki.sandbox.v1.RunResponse.exit:type_name -> tenki.sandbox.v1.RunExit
+	94,  // 104: tenki.sandbox.v1.RunResponse.flow:type_name -> tenki.sandbox.v1.RunFlowControl
+	213, // 105: tenki.sandbox.v1.GitOperationRequest.args:type_name -> tenki.sandbox.v1.GitOperationRequest.ArgsEntry
+	106, // 106: tenki.sandbox.v1.WriteFileStreamRequest.start:type_name -> tenki.sandbox.v1.WriteFileStreamStart
+	116, // 107: tenki.sandbox.v1.ListResponse.entries:type_name -> tenki.sandbox.v1.ListEntry
+	14,  // 108: tenki.sandbox.v1.PauseSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
+	14,  // 109: tenki.sandbox.v1.ResumeSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
+	14,  // 110: tenki.sandbox.v1.TerminateSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
+	14,  // 111: tenki.sandbox.v1.TerminateSessionsResponse.sessions:type_name -> tenki.sandbox.v1.SandboxSession
+	125, // 112: tenki.sandbox.v1.TerminateSessionsResponse.failures:type_name -> tenki.sandbox.v1.TerminateSessionFailure
+	215, // 113: tenki.sandbox.v1.ExtendSessionRequest.additional_duration:type_name -> google.protobuf.Duration
+	14,  // 114: tenki.sandbox.v1.ExtendSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
+	214, // 115: tenki.sandbox.v1.GetArtifactUploadUrlResponse.expires_at:type_name -> google.protobuf.Timestamp
+	214, // 116: tenki.sandbox.v1.GetArtifactDownloadUrlResponse.expires_at:type_name -> google.protobuf.Timestamp
+	214, // 117: tenki.sandbox.v1.ExposePortRequest.expires_at:type_name -> google.protobuf.Timestamp
+	214, // 118: tenki.sandbox.v1.ExposePortResponse.expires_at:type_name -> google.protobuf.Timestamp
+	135, // 119: tenki.sandbox.v1.HostPortTunnelRequest.open:type_name -> tenki.sandbox.v1.HostPortTunnelOpen
+	136, // 120: tenki.sandbox.v1.HostPortTunnelRequest.data:type_name -> tenki.sandbox.v1.HostPortTunnelData
+	137, // 121: tenki.sandbox.v1.HostPortTunnelRequest.half_close:type_name -> tenki.sandbox.v1.HostPortTunnelHalfClose
+	138, // 122: tenki.sandbox.v1.HostPortTunnelRequest.close:type_name -> tenki.sandbox.v1.HostPortTunnelClose
+	139, // 123: tenki.sandbox.v1.HostPortTunnelRequest.pong:type_name -> tenki.sandbox.v1.HostPortTunnelKeepalivePong
+	141, // 124: tenki.sandbox.v1.HostPortTunnelResponse.opened:type_name -> tenki.sandbox.v1.HostPortTunnelOpened
+	142, // 125: tenki.sandbox.v1.HostPortTunnelResponse.accept:type_name -> tenki.sandbox.v1.HostPortTunnelAccept
+	136, // 126: tenki.sandbox.v1.HostPortTunnelResponse.data:type_name -> tenki.sandbox.v1.HostPortTunnelData
+	137, // 127: tenki.sandbox.v1.HostPortTunnelResponse.half_close:type_name -> tenki.sandbox.v1.HostPortTunnelHalfClose
+	138, // 128: tenki.sandbox.v1.HostPortTunnelResponse.close:type_name -> tenki.sandbox.v1.HostPortTunnelClose
+	143, // 129: tenki.sandbox.v1.HostPortTunnelResponse.ping:type_name -> tenki.sandbox.v1.HostPortTunnelKeepalivePing
+	144, // 130: tenki.sandbox.v1.HostPortTunnelResponse.terminated:type_name -> tenki.sandbox.v1.HostPortTunnelTerminated
+	10,  // 131: tenki.sandbox.v1.HostPortTunnelTerminated.reason:type_name -> tenki.sandbox.v1.HostPortTunnelTerminated.Reason
+	214, // 132: tenki.sandbox.v1.OpenPreviewRequest.expires_at:type_name -> google.protobuf.Timestamp
+	214, // 133: tenki.sandbox.v1.OpenPreviewResponse.expires_at:type_name -> google.protobuf.Timestamp
+	214, // 134: tenki.sandbox.v1.TouchPreviewResponse.last_accessed_at:type_name -> google.protobuf.Timestamp
+	214, // 135: tenki.sandbox.v1.ReportSessionActivityResponse.last_activity_at:type_name -> google.protobuf.Timestamp
+	214, // 136: tenki.sandbox.v1.PortExposure.expires_at:type_name -> google.protobuf.Timestamp
+	154, // 137: tenki.sandbox.v1.ListExposedPortsResponse.ports:type_name -> tenki.sandbox.v1.PortExposure
+	19,  // 138: tenki.sandbox.v1.CreatePreviewUrlResponse.preview_url:type_name -> tenki.sandbox.v1.PreviewUrl
+	19,  // 139: tenki.sandbox.v1.BindPreviewUrlResponse.preview_url:type_name -> tenki.sandbox.v1.PreviewUrl
+	19,  // 140: tenki.sandbox.v1.UnbindPreviewUrlResponse.preview_url:type_name -> tenki.sandbox.v1.PreviewUrl
+	19,  // 141: tenki.sandbox.v1.ListPreviewUrlsResponse.preview_urls:type_name -> tenki.sandbox.v1.PreviewUrl
+	19,  // 142: tenki.sandbox.v1.GetPreviewUrlResponse.preview_url:type_name -> tenki.sandbox.v1.PreviewUrl
+	214, // 143: tenki.sandbox.v1.ResolvePreviewTokenResponse.expires_at:type_name -> google.protobuf.Timestamp
+	214, // 144: tenki.sandbox.v1.CreateSnapshotRequest.expires_at:type_name -> google.protobuf.Timestamp
+	15,  // 145: tenki.sandbox.v1.CreateSnapshotResponse.snapshot:type_name -> tenki.sandbox.v1.Snapshot
+	15,  // 146: tenki.sandbox.v1.GetSnapshotResponse.snapshot:type_name -> tenki.sandbox.v1.Snapshot
+	214, // 147: tenki.sandbox.v1.GetSnapshotDownloadURLResponse.expires_at:type_name -> google.protobuf.Timestamp
+	15,  // 148: tenki.sandbox.v1.ListSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
+	15,  // 149: tenki.sandbox.v1.ListSessionSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
+	15,  // 150: tenki.sandbox.v1.ListDanglingSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
+	15,  // 151: tenki.sandbox.v1.ListWorkspaceSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
+	15,  // 152: tenki.sandbox.v1.ListProjectSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
+	17,  // 153: tenki.sandbox.v1.GetWorkspaceSandboxUsageResponse.limits:type_name -> tenki.sandbox.v1.WorkspaceSandboxUsageLimit
+	16,  // 154: tenki.sandbox.v1.GetWorkspaceSandboxSettingsResponse.settings:type_name -> tenki.sandbox.v1.WorkspaceSandboxSettings
+	215, // 155: tenki.sandbox.v1.UpdateWorkspaceSandboxSettingsRequest.pause_retention:type_name -> google.protobuf.Duration
+	215, // 156: tenki.sandbox.v1.UpdateWorkspaceSandboxSettingsRequest.snapshot_retention:type_name -> google.protobuf.Duration
+	16,  // 157: tenki.sandbox.v1.UpdateWorkspaceSandboxSettingsResponse.settings:type_name -> tenki.sandbox.v1.WorkspaceSandboxSettings
+	18,  // 158: tenki.sandbox.v1.GetWorkspaceSnapshotRetentionSettingsResponse.settings:type_name -> tenki.sandbox.v1.WorkspaceSnapshotRetentionSettings
+	215, // 159: tenki.sandbox.v1.UpdateWorkspaceSnapshotRetentionSettingsRequest.pause_retention:type_name -> google.protobuf.Duration
+	215, // 160: tenki.sandbox.v1.UpdateWorkspaceSnapshotRetentionSettingsRequest.snapshot_retention:type_name -> google.protobuf.Duration
+	18,  // 161: tenki.sandbox.v1.UpdateWorkspaceSnapshotRetentionSettingsResponse.settings:type_name -> tenki.sandbox.v1.WorkspaceSnapshotRetentionSettings
+	15,  // 162: tenki.sandbox.v1.DeleteSnapshotResponse.snapshot:type_name -> tenki.sandbox.v1.Snapshot
+	214, // 163: tenki.sandbox.v1.UpdateSnapshotRequest.expires_at:type_name -> google.protobuf.Timestamp
+	15,  // 164: tenki.sandbox.v1.UpdateSnapshotResponse.snapshot:type_name -> tenki.sandbox.v1.Snapshot
+	204, // 165: tenki.sandbox.v1.WhoAmIResponse.workspaces:type_name -> tenki.sandbox.v1.WhoAmIWorkspace
+	205, // 166: tenki.sandbox.v1.WhoAmIWorkspace.projects:type_name -> tenki.sandbox.v1.WhoAmIProject
+	21,  // 167: tenki.sandbox.v1.SandboxService.CreateSession:input_type -> tenki.sandbox.v1.CreateSessionRequest
+	25,  // 168: tenki.sandbox.v1.SandboxService.CreateSessionCredential:input_type -> tenki.sandbox.v1.CreateSessionCredentialRequest
+	49,  // 169: tenki.sandbox.v1.SandboxService.GetSession:input_type -> tenki.sandbox.v1.GetSessionRequest
+	51,  // 170: tenki.sandbox.v1.SandboxService.WaitSession:input_type -> tenki.sandbox.v1.WaitSessionRequest
+	53,  // 171: tenki.sandbox.v1.SandboxService.ListSessions:input_type -> tenki.sandbox.v1.ListSessionsRequest
+	55,  // 172: tenki.sandbox.v1.SandboxService.ListWorkspaceSandboxes:input_type -> tenki.sandbox.v1.ListWorkspaceSandboxesRequest
+	57,  // 173: tenki.sandbox.v1.SandboxService.ListProjectSandboxes:input_type -> tenki.sandbox.v1.ListProjectSandboxesRequest
+	58,  // 174: tenki.sandbox.v1.SandboxService.UpdateSession:input_type -> tenki.sandbox.v1.UpdateSessionRequest
+	61,  // 175: tenki.sandbox.v1.SandboxService.CreateVolume:input_type -> tenki.sandbox.v1.CreateVolumeRequest
+	63,  // 176: tenki.sandbox.v1.SandboxService.GetVolume:input_type -> tenki.sandbox.v1.GetVolumeRequest
+	65,  // 177: tenki.sandbox.v1.SandboxService.ListVolumes:input_type -> tenki.sandbox.v1.ListVolumesRequest
+	67,  // 178: tenki.sandbox.v1.SandboxService.ListProjectVolumes:input_type -> tenki.sandbox.v1.ListProjectVolumesRequest
+	71,  // 179: tenki.sandbox.v1.SandboxService.UpdateVolume:input_type -> tenki.sandbox.v1.UpdateVolumeRequest
+	69,  // 180: tenki.sandbox.v1.SandboxService.DeleteVolume:input_type -> tenki.sandbox.v1.DeleteVolumeRequest
+	73,  // 181: tenki.sandbox.v1.SandboxService.ResizeVolume:input_type -> tenki.sandbox.v1.ResizeVolumeRequest
+	75,  // 182: tenki.sandbox.v1.SandboxService.AttachVolume:input_type -> tenki.sandbox.v1.AttachVolumeRequest
+	77,  // 183: tenki.sandbox.v1.SandboxService.DetachVolume:input_type -> tenki.sandbox.v1.DetachVolumeRequest
+	79,  // 184: tenki.sandbox.v1.SandboxService.ExecuteCommand:input_type -> tenki.sandbox.v1.ExecuteCommandRequest
+	81,  // 185: tenki.sandbox.v1.SandboxService.StreamCommandOutput:input_type -> tenki.sandbox.v1.StreamCommandOutputRequest
+	97,  // 186: tenki.sandbox.v1.SandboxService.GitOperation:input_type -> tenki.sandbox.v1.GitOperationRequest
+	117, // 187: tenki.sandbox.v1.SandboxService.PauseSession:input_type -> tenki.sandbox.v1.PauseSessionRequest
+	119, // 188: tenki.sandbox.v1.SandboxService.ResumeSession:input_type -> tenki.sandbox.v1.ResumeSessionRequest
+	121, // 189: tenki.sandbox.v1.SandboxService.TerminateSession:input_type -> tenki.sandbox.v1.TerminateSessionRequest
+	123, // 190: tenki.sandbox.v1.SandboxService.TerminateSessions:input_type -> tenki.sandbox.v1.TerminateSessionsRequest
+	126, // 191: tenki.sandbox.v1.SandboxService.ExtendSession:input_type -> tenki.sandbox.v1.ExtendSessionRequest
+	128, // 192: tenki.sandbox.v1.SandboxService.GetArtifactUploadUrl:input_type -> tenki.sandbox.v1.GetArtifactUploadUrlRequest
+	130, // 193: tenki.sandbox.v1.SandboxService.GetArtifactDownloadUrl:input_type -> tenki.sandbox.v1.GetArtifactDownloadUrlRequest
+	132, // 194: tenki.sandbox.v1.SandboxService.ExposePort:input_type -> tenki.sandbox.v1.ExposePortRequest
+	145, // 195: tenki.sandbox.v1.SandboxService.OpenPreview:input_type -> tenki.sandbox.v1.OpenPreviewRequest
+	147, // 196: tenki.sandbox.v1.SandboxService.TouchPreview:input_type -> tenki.sandbox.v1.TouchPreviewRequest
+	149, // 197: tenki.sandbox.v1.SandboxService.ReportSessionActivity:input_type -> tenki.sandbox.v1.ReportSessionActivityRequest
+	151, // 198: tenki.sandbox.v1.SandboxService.UnexposePort:input_type -> tenki.sandbox.v1.UnexposePortRequest
+	153, // 199: tenki.sandbox.v1.SandboxService.ListExposedPorts:input_type -> tenki.sandbox.v1.ListExposedPortsRequest
+	156, // 200: tenki.sandbox.v1.SandboxService.CreatePreviewUrl:input_type -> tenki.sandbox.v1.CreatePreviewUrlRequest
+	158, // 201: tenki.sandbox.v1.SandboxService.DeletePreviewUrl:input_type -> tenki.sandbox.v1.DeletePreviewUrlRequest
+	160, // 202: tenki.sandbox.v1.SandboxService.BindPreviewUrl:input_type -> tenki.sandbox.v1.BindPreviewUrlRequest
+	162, // 203: tenki.sandbox.v1.SandboxService.UnbindPreviewUrl:input_type -> tenki.sandbox.v1.UnbindPreviewUrlRequest
+	164, // 204: tenki.sandbox.v1.SandboxService.ListPreviewUrls:input_type -> tenki.sandbox.v1.ListPreviewUrlsRequest
+	166, // 205: tenki.sandbox.v1.SandboxService.GetPreviewUrl:input_type -> tenki.sandbox.v1.GetPreviewUrlRequest
+	168, // 206: tenki.sandbox.v1.SandboxService.ResolvePreviewToken:input_type -> tenki.sandbox.v1.ResolvePreviewTokenRequest
+	170, // 207: tenki.sandbox.v1.SandboxService.UpdateSSHAuthorizedKeys:input_type -> tenki.sandbox.v1.UpdateSSHAuthorizedKeysRequest
+	172, // 208: tenki.sandbox.v1.SandboxService.CreateSnapshot:input_type -> tenki.sandbox.v1.CreateSnapshotRequest
+	174, // 209: tenki.sandbox.v1.SandboxService.GetSnapshot:input_type -> tenki.sandbox.v1.GetSnapshotRequest
+	176, // 210: tenki.sandbox.v1.SandboxService.GetSnapshotDownloadURL:input_type -> tenki.sandbox.v1.GetSnapshotDownloadURLRequest
+	178, // 211: tenki.sandbox.v1.SandboxService.ListSnapshots:input_type -> tenki.sandbox.v1.ListSnapshotsRequest
+	180, // 212: tenki.sandbox.v1.SandboxService.ListSessionSnapshots:input_type -> tenki.sandbox.v1.ListSessionSnapshotsRequest
+	182, // 213: tenki.sandbox.v1.SandboxService.ListDanglingSnapshots:input_type -> tenki.sandbox.v1.ListDanglingSnapshotsRequest
+	184, // 214: tenki.sandbox.v1.SandboxService.ListWorkspaceSnapshots:input_type -> tenki.sandbox.v1.ListWorkspaceSnapshotsRequest
+	186, // 215: tenki.sandbox.v1.SandboxService.ListProjectSnapshots:input_type -> tenki.sandbox.v1.ListProjectSnapshotsRequest
+	188, // 216: tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxUsage:input_type -> tenki.sandbox.v1.GetWorkspaceSandboxUsageRequest
+	190, // 217: tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxSettings:input_type -> tenki.sandbox.v1.GetWorkspaceSandboxSettingsRequest
+	192, // 218: tenki.sandbox.v1.SandboxService.UpdateWorkspaceSandboxSettings:input_type -> tenki.sandbox.v1.UpdateWorkspaceSandboxSettingsRequest
+	194, // 219: tenki.sandbox.v1.SandboxService.GetWorkspaceSnapshotRetentionSettings:input_type -> tenki.sandbox.v1.GetWorkspaceSnapshotRetentionSettingsRequest
+	196, // 220: tenki.sandbox.v1.SandboxService.UpdateWorkspaceSnapshotRetentionSettings:input_type -> tenki.sandbox.v1.UpdateWorkspaceSnapshotRetentionSettingsRequest
+	200, // 221: tenki.sandbox.v1.SandboxService.UpdateSnapshot:input_type -> tenki.sandbox.v1.UpdateSnapshotRequest
+	198, // 222: tenki.sandbox.v1.SandboxService.DeleteSnapshot:input_type -> tenki.sandbox.v1.DeleteSnapshotRequest
+	217, // 223: tenki.sandbox.v1.SandboxService.CreateTemplate:input_type -> tenki.sandbox.v1.CreateTemplateRequest
+	218, // 224: tenki.sandbox.v1.SandboxService.GetTemplate:input_type -> tenki.sandbox.v1.GetTemplateRequest
+	219, // 225: tenki.sandbox.v1.SandboxService.ListTemplates:input_type -> tenki.sandbox.v1.ListTemplatesRequest
+	220, // 226: tenki.sandbox.v1.SandboxService.ListProjectTemplates:input_type -> tenki.sandbox.v1.ListProjectTemplatesRequest
+	221, // 227: tenki.sandbox.v1.SandboxService.UpdateTemplate:input_type -> tenki.sandbox.v1.UpdateTemplateRequest
+	222, // 228: tenki.sandbox.v1.SandboxService.DeleteTemplate:input_type -> tenki.sandbox.v1.DeleteTemplateRequest
+	223, // 229: tenki.sandbox.v1.SandboxService.BuildTemplate:input_type -> tenki.sandbox.v1.BuildTemplateRequest
+	224, // 230: tenki.sandbox.v1.SandboxService.CancelTemplateBuild:input_type -> tenki.sandbox.v1.CancelTemplateBuildRequest
+	225, // 231: tenki.sandbox.v1.SandboxService.GetTemplateBuild:input_type -> tenki.sandbox.v1.GetTemplateBuildRequest
+	226, // 232: tenki.sandbox.v1.SandboxService.ListActiveTemplateBuilds:input_type -> tenki.sandbox.v1.ListActiveTemplateBuildsRequest
+	227, // 233: tenki.sandbox.v1.SandboxService.PublishRegistryImage:input_type -> tenki.sandbox.v1.PublishRegistryImageRequest
+	228, // 234: tenki.sandbox.v1.SandboxService.SetRegistryImageVisibility:input_type -> tenki.sandbox.v1.SetRegistryImageVisibilityRequest
+	229, // 235: tenki.sandbox.v1.SandboxService.DeleteRegistryImage:input_type -> tenki.sandbox.v1.DeleteRegistryImageRequest
+	230, // 236: tenki.sandbox.v1.SandboxService.DeleteRegistryImageVersion:input_type -> tenki.sandbox.v1.DeleteRegistryImageVersionRequest
+	231, // 237: tenki.sandbox.v1.SandboxService.ListRegistryImages:input_type -> tenki.sandbox.v1.ListRegistryImagesRequest
+	232, // 238: tenki.sandbox.v1.SandboxService.GetRegistryImage:input_type -> tenki.sandbox.v1.GetRegistryImageRequest
+	233, // 239: tenki.sandbox.v1.SandboxService.ResolveRegistryRef:input_type -> tenki.sandbox.v1.ResolveRegistryRefRequest
+	234, // 240: tenki.sandbox.v1.SandboxService.ShareImage:input_type -> tenki.sandbox.v1.ShareImageRequest
+	235, // 241: tenki.sandbox.v1.SandboxService.RevokeRegistryShareGrant:input_type -> tenki.sandbox.v1.RevokeRegistryShareGrantRequest
+	236, // 242: tenki.sandbox.v1.SandboxService.ListRegistryShareGrants:input_type -> tenki.sandbox.v1.ListRegistryShareGrantsRequest
+	237, // 243: tenki.sandbox.v1.SandboxService.UnshareRegistryImage:input_type -> tenki.sandbox.v1.UnshareRegistryImageRequest
+	202, // 244: tenki.sandbox.v1.SandboxService.WhoAmI:input_type -> tenki.sandbox.v1.WhoAmIRequest
+	27,  // 245: tenki.sandbox.v1.SandboxSessionDataPlaneService.Run:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceRunRequest
+	29,  // 246: tenki.sandbox.v1.SandboxSessionDataPlaneService.Dial:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceDialRequest
+	31,  // 247: tenki.sandbox.v1.SandboxSessionDataPlaneService.HostPortTunnel:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceHostPortTunnelRequest
+	33,  // 248: tenki.sandbox.v1.SandboxSessionDataPlaneService.ReadFile:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileRequest
+	35,  // 249: tenki.sandbox.v1.SandboxSessionDataPlaneService.WriteFile:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileRequest
+	37,  // 250: tenki.sandbox.v1.SandboxSessionDataPlaneService.ReadFileStream:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileStreamRequest
+	39,  // 251: tenki.sandbox.v1.SandboxSessionDataPlaneService.WriteFileStream:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileStreamRequest
+	41,  // 252: tenki.sandbox.v1.SandboxSessionDataPlaneService.Stat:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceStatRequest
+	43,  // 253: tenki.sandbox.v1.SandboxSessionDataPlaneService.Mkdir:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceMkdirRequest
+	45,  // 254: tenki.sandbox.v1.SandboxSessionDataPlaneService.Remove:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceRemoveRequest
+	47,  // 255: tenki.sandbox.v1.SandboxSessionDataPlaneService.List:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceListRequest
+	22,  // 256: tenki.sandbox.v1.SandboxService.CreateSession:output_type -> tenki.sandbox.v1.CreateSessionResponse
+	26,  // 257: tenki.sandbox.v1.SandboxService.CreateSessionCredential:output_type -> tenki.sandbox.v1.CreateSessionCredentialResponse
+	50,  // 258: tenki.sandbox.v1.SandboxService.GetSession:output_type -> tenki.sandbox.v1.GetSessionResponse
+	52,  // 259: tenki.sandbox.v1.SandboxService.WaitSession:output_type -> tenki.sandbox.v1.WaitSessionResponse
+	54,  // 260: tenki.sandbox.v1.SandboxService.ListSessions:output_type -> tenki.sandbox.v1.ListSessionsResponse
+	56,  // 261: tenki.sandbox.v1.SandboxService.ListWorkspaceSandboxes:output_type -> tenki.sandbox.v1.ListWorkspaceSandboxesResponse
+	60,  // 262: tenki.sandbox.v1.SandboxService.ListProjectSandboxes:output_type -> tenki.sandbox.v1.ListProjectSandboxesResponse
+	59,  // 263: tenki.sandbox.v1.SandboxService.UpdateSession:output_type -> tenki.sandbox.v1.UpdateSessionResponse
+	62,  // 264: tenki.sandbox.v1.SandboxService.CreateVolume:output_type -> tenki.sandbox.v1.CreateVolumeResponse
+	64,  // 265: tenki.sandbox.v1.SandboxService.GetVolume:output_type -> tenki.sandbox.v1.GetVolumeResponse
+	66,  // 266: tenki.sandbox.v1.SandboxService.ListVolumes:output_type -> tenki.sandbox.v1.ListVolumesResponse
+	68,  // 267: tenki.sandbox.v1.SandboxService.ListProjectVolumes:output_type -> tenki.sandbox.v1.ListProjectVolumesResponse
+	72,  // 268: tenki.sandbox.v1.SandboxService.UpdateVolume:output_type -> tenki.sandbox.v1.UpdateVolumeResponse
+	70,  // 269: tenki.sandbox.v1.SandboxService.DeleteVolume:output_type -> tenki.sandbox.v1.DeleteVolumeResponse
+	74,  // 270: tenki.sandbox.v1.SandboxService.ResizeVolume:output_type -> tenki.sandbox.v1.ResizeVolumeResponse
+	76,  // 271: tenki.sandbox.v1.SandboxService.AttachVolume:output_type -> tenki.sandbox.v1.AttachVolumeResponse
+	78,  // 272: tenki.sandbox.v1.SandboxService.DetachVolume:output_type -> tenki.sandbox.v1.DetachVolumeResponse
+	80,  // 273: tenki.sandbox.v1.SandboxService.ExecuteCommand:output_type -> tenki.sandbox.v1.ExecuteCommandResponse
+	82,  // 274: tenki.sandbox.v1.SandboxService.StreamCommandOutput:output_type -> tenki.sandbox.v1.StreamCommandOutputResponse
+	98,  // 275: tenki.sandbox.v1.SandboxService.GitOperation:output_type -> tenki.sandbox.v1.GitOperationResponse
+	118, // 276: tenki.sandbox.v1.SandboxService.PauseSession:output_type -> tenki.sandbox.v1.PauseSessionResponse
+	120, // 277: tenki.sandbox.v1.SandboxService.ResumeSession:output_type -> tenki.sandbox.v1.ResumeSessionResponse
+	122, // 278: tenki.sandbox.v1.SandboxService.TerminateSession:output_type -> tenki.sandbox.v1.TerminateSessionResponse
+	124, // 279: tenki.sandbox.v1.SandboxService.TerminateSessions:output_type -> tenki.sandbox.v1.TerminateSessionsResponse
+	127, // 280: tenki.sandbox.v1.SandboxService.ExtendSession:output_type -> tenki.sandbox.v1.ExtendSessionResponse
+	129, // 281: tenki.sandbox.v1.SandboxService.GetArtifactUploadUrl:output_type -> tenki.sandbox.v1.GetArtifactUploadUrlResponse
+	131, // 282: tenki.sandbox.v1.SandboxService.GetArtifactDownloadUrl:output_type -> tenki.sandbox.v1.GetArtifactDownloadUrlResponse
+	133, // 283: tenki.sandbox.v1.SandboxService.ExposePort:output_type -> tenki.sandbox.v1.ExposePortResponse
+	146, // 284: tenki.sandbox.v1.SandboxService.OpenPreview:output_type -> tenki.sandbox.v1.OpenPreviewResponse
+	148, // 285: tenki.sandbox.v1.SandboxService.TouchPreview:output_type -> tenki.sandbox.v1.TouchPreviewResponse
+	150, // 286: tenki.sandbox.v1.SandboxService.ReportSessionActivity:output_type -> tenki.sandbox.v1.ReportSessionActivityResponse
+	152, // 287: tenki.sandbox.v1.SandboxService.UnexposePort:output_type -> tenki.sandbox.v1.UnexposePortResponse
+	155, // 288: tenki.sandbox.v1.SandboxService.ListExposedPorts:output_type -> tenki.sandbox.v1.ListExposedPortsResponse
+	157, // 289: tenki.sandbox.v1.SandboxService.CreatePreviewUrl:output_type -> tenki.sandbox.v1.CreatePreviewUrlResponse
+	159, // 290: tenki.sandbox.v1.SandboxService.DeletePreviewUrl:output_type -> tenki.sandbox.v1.DeletePreviewUrlResponse
+	161, // 291: tenki.sandbox.v1.SandboxService.BindPreviewUrl:output_type -> tenki.sandbox.v1.BindPreviewUrlResponse
+	163, // 292: tenki.sandbox.v1.SandboxService.UnbindPreviewUrl:output_type -> tenki.sandbox.v1.UnbindPreviewUrlResponse
+	165, // 293: tenki.sandbox.v1.SandboxService.ListPreviewUrls:output_type -> tenki.sandbox.v1.ListPreviewUrlsResponse
+	167, // 294: tenki.sandbox.v1.SandboxService.GetPreviewUrl:output_type -> tenki.sandbox.v1.GetPreviewUrlResponse
+	169, // 295: tenki.sandbox.v1.SandboxService.ResolvePreviewToken:output_type -> tenki.sandbox.v1.ResolvePreviewTokenResponse
+	171, // 296: tenki.sandbox.v1.SandboxService.UpdateSSHAuthorizedKeys:output_type -> tenki.sandbox.v1.UpdateSSHAuthorizedKeysResponse
+	173, // 297: tenki.sandbox.v1.SandboxService.CreateSnapshot:output_type -> tenki.sandbox.v1.CreateSnapshotResponse
+	175, // 298: tenki.sandbox.v1.SandboxService.GetSnapshot:output_type -> tenki.sandbox.v1.GetSnapshotResponse
+	177, // 299: tenki.sandbox.v1.SandboxService.GetSnapshotDownloadURL:output_type -> tenki.sandbox.v1.GetSnapshotDownloadURLResponse
+	179, // 300: tenki.sandbox.v1.SandboxService.ListSnapshots:output_type -> tenki.sandbox.v1.ListSnapshotsResponse
+	181, // 301: tenki.sandbox.v1.SandboxService.ListSessionSnapshots:output_type -> tenki.sandbox.v1.ListSessionSnapshotsResponse
+	183, // 302: tenki.sandbox.v1.SandboxService.ListDanglingSnapshots:output_type -> tenki.sandbox.v1.ListDanglingSnapshotsResponse
+	185, // 303: tenki.sandbox.v1.SandboxService.ListWorkspaceSnapshots:output_type -> tenki.sandbox.v1.ListWorkspaceSnapshotsResponse
+	187, // 304: tenki.sandbox.v1.SandboxService.ListProjectSnapshots:output_type -> tenki.sandbox.v1.ListProjectSnapshotsResponse
+	189, // 305: tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxUsage:output_type -> tenki.sandbox.v1.GetWorkspaceSandboxUsageResponse
+	191, // 306: tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxSettings:output_type -> tenki.sandbox.v1.GetWorkspaceSandboxSettingsResponse
+	193, // 307: tenki.sandbox.v1.SandboxService.UpdateWorkspaceSandboxSettings:output_type -> tenki.sandbox.v1.UpdateWorkspaceSandboxSettingsResponse
+	195, // 308: tenki.sandbox.v1.SandboxService.GetWorkspaceSnapshotRetentionSettings:output_type -> tenki.sandbox.v1.GetWorkspaceSnapshotRetentionSettingsResponse
+	197, // 309: tenki.sandbox.v1.SandboxService.UpdateWorkspaceSnapshotRetentionSettings:output_type -> tenki.sandbox.v1.UpdateWorkspaceSnapshotRetentionSettingsResponse
+	201, // 310: tenki.sandbox.v1.SandboxService.UpdateSnapshot:output_type -> tenki.sandbox.v1.UpdateSnapshotResponse
+	199, // 311: tenki.sandbox.v1.SandboxService.DeleteSnapshot:output_type -> tenki.sandbox.v1.DeleteSnapshotResponse
+	238, // 312: tenki.sandbox.v1.SandboxService.CreateTemplate:output_type -> tenki.sandbox.v1.CreateTemplateResponse
+	239, // 313: tenki.sandbox.v1.SandboxService.GetTemplate:output_type -> tenki.sandbox.v1.GetTemplateResponse
+	240, // 314: tenki.sandbox.v1.SandboxService.ListTemplates:output_type -> tenki.sandbox.v1.ListTemplatesResponse
+	241, // 315: tenki.sandbox.v1.SandboxService.ListProjectTemplates:output_type -> tenki.sandbox.v1.ListProjectTemplatesResponse
+	242, // 316: tenki.sandbox.v1.SandboxService.UpdateTemplate:output_type -> tenki.sandbox.v1.UpdateTemplateResponse
+	243, // 317: tenki.sandbox.v1.SandboxService.DeleteTemplate:output_type -> tenki.sandbox.v1.DeleteTemplateResponse
+	244, // 318: tenki.sandbox.v1.SandboxService.BuildTemplate:output_type -> tenki.sandbox.v1.BuildTemplateResponse
+	245, // 319: tenki.sandbox.v1.SandboxService.CancelTemplateBuild:output_type -> tenki.sandbox.v1.CancelTemplateBuildResponse
+	246, // 320: tenki.sandbox.v1.SandboxService.GetTemplateBuild:output_type -> tenki.sandbox.v1.GetTemplateBuildResponse
+	247, // 321: tenki.sandbox.v1.SandboxService.ListActiveTemplateBuilds:output_type -> tenki.sandbox.v1.ListActiveTemplateBuildsResponse
+	248, // 322: tenki.sandbox.v1.SandboxService.PublishRegistryImage:output_type -> tenki.sandbox.v1.PublishRegistryImageResponse
+	249, // 323: tenki.sandbox.v1.SandboxService.SetRegistryImageVisibility:output_type -> tenki.sandbox.v1.SetRegistryImageVisibilityResponse
+	250, // 324: tenki.sandbox.v1.SandboxService.DeleteRegistryImage:output_type -> tenki.sandbox.v1.DeleteRegistryImageResponse
+	251, // 325: tenki.sandbox.v1.SandboxService.DeleteRegistryImageVersion:output_type -> tenki.sandbox.v1.DeleteRegistryImageVersionResponse
+	252, // 326: tenki.sandbox.v1.SandboxService.ListRegistryImages:output_type -> tenki.sandbox.v1.ListRegistryImagesResponse
+	253, // 327: tenki.sandbox.v1.SandboxService.GetRegistryImage:output_type -> tenki.sandbox.v1.GetRegistryImageResponse
+	254, // 328: tenki.sandbox.v1.SandboxService.ResolveRegistryRef:output_type -> tenki.sandbox.v1.ResolveRegistryRefResponse
+	255, // 329: tenki.sandbox.v1.SandboxService.ShareImage:output_type -> tenki.sandbox.v1.ShareImageResponse
+	256, // 330: tenki.sandbox.v1.SandboxService.RevokeRegistryShareGrant:output_type -> tenki.sandbox.v1.RevokeRegistryShareGrantResponse
+	257, // 331: tenki.sandbox.v1.SandboxService.ListRegistryShareGrants:output_type -> tenki.sandbox.v1.ListRegistryShareGrantsResponse
+	258, // 332: tenki.sandbox.v1.SandboxService.UnshareRegistryImage:output_type -> tenki.sandbox.v1.UnshareRegistryImageResponse
+	203, // 333: tenki.sandbox.v1.SandboxService.WhoAmI:output_type -> tenki.sandbox.v1.WhoAmIResponse
+	28,  // 334: tenki.sandbox.v1.SandboxSessionDataPlaneService.Run:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceRunResponse
+	30,  // 335: tenki.sandbox.v1.SandboxSessionDataPlaneService.Dial:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceDialResponse
+	32,  // 336: tenki.sandbox.v1.SandboxSessionDataPlaneService.HostPortTunnel:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceHostPortTunnelResponse
+	34,  // 337: tenki.sandbox.v1.SandboxSessionDataPlaneService.ReadFile:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileResponse
+	36,  // 338: tenki.sandbox.v1.SandboxSessionDataPlaneService.WriteFile:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileResponse
+	38,  // 339: tenki.sandbox.v1.SandboxSessionDataPlaneService.ReadFileStream:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileStreamResponse
+	40,  // 340: tenki.sandbox.v1.SandboxSessionDataPlaneService.WriteFileStream:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileStreamResponse
+	42,  // 341: tenki.sandbox.v1.SandboxSessionDataPlaneService.Stat:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceStatResponse
+	44,  // 342: tenki.sandbox.v1.SandboxSessionDataPlaneService.Mkdir:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceMkdirResponse
+	46,  // 343: tenki.sandbox.v1.SandboxSessionDataPlaneService.Remove:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceRemoveResponse
+	48,  // 344: tenki.sandbox.v1.SandboxSessionDataPlaneService.List:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceListResponse
+	256, // [256:345] is the sub-list for method output_type
+	167, // [167:256] is the sub-list for method input_type
+	167, // [167:167] is the sub-list for extension type_name
+	167, // [167:167] is the sub-list for extension extendee
+	0,   // [0:167] is the sub-list for field type_name
 }
 
 func init() { file_tenki_sandbox_v1_sandbox_proto_init() }
